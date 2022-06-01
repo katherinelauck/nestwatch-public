@@ -1,0 +1,15 @@
+---
+title: 'Data Dictionary: raw-collapsed.RData'
+date: "10/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gt)
+```
+
+```{r,echo = FALSE,message=FALSE}
+source("dataDictionary_Streamlined_DK.R")
+gt(reorderDD)
+```

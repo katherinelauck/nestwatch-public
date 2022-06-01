@@ -1,0 +1,1 @@
+bounded.hpp<-function(sample, lower = 0, upper = 1, mode = TRUE,

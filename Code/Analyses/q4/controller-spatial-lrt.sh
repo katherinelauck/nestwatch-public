@@ -1,0 +1,22 @@
+#!/bin/bash
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tavgnestpd_meanmax_gridmet_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tavgnestpd_meanmax_gridmet_tmax.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tavgnestpd_meanmax_gridmet_tmaxsq.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tmean_rel2sp_anom_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tmean_rel2sp_anom_tmax.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tmean_rel2sp_anom_tmaxsq.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tmean_rel2sp_z_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tmean_rel2sp_z_tmax.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tmean_rel2sp_z_tmaxsq.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_meanmax_gridmet_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_meanmax_gridmet_tmax.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_meanmax_gridmet_tmaxsq.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_rel2sheard_anom_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_rel2sheard_anom_tmax.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_rel2sheard_anom_tmaxsq.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_rel2sheard_z_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_rel2sheard_z_tmax.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_rel2sheard_z_tmaxsq.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_stdmaxsp_gridmet_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_stdmaxsp_gridmet_tmax.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/q4/tnestpd_stdmaxsp_gridmet_tmaxsq.sh

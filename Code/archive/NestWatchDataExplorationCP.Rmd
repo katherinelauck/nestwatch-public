@@ -1,0 +1,202 @@
+---
+title: "NestWatchDataExplorationCP"
+author: "Cody Pham"
+date: "10/15/2021"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+# read in active datasets
+fail.dat <- readRDS('C:/Users/codyp/Desktop/nestwatch/Data/active/failure-cleaned.rds') ## failures
+suc.dat <- readRDS('C:/Users/codyp/Desktop/nestwatch/Data/active/success-cleaned.rds') ## successes
+```
+
+#Data checks
+```{r}
+fail.dat %>% 
+  range(as.numeric(year)) ## how many years covered
+
+unique(fail.dat$NewLU1) ## land cover classes immediate habitat
+unique(fail.dat$predation)
+
+fail.dat %>% 
+  select(species, predation) %>% 
+  summarize(pred.count=(sum(predation==1, na.rm = T)),
+            total.obs=sum(!is.na(species))) %>% 
+  arrange(desc(pred.count))
+
+#total failure or only bhco fledged
+f.bhco <- c("f", "f4")
+fail.dat.bhco <- fail.dat %>% 
+  filter(outcome %in% f.bhco)
+```
+
+#Fun tables
+```{r}
+#dataframe for average values for each species
+## precipitation and temp average/SD values fro 1980-2000
+bhco.prop.dat <- fail.dat %>% 
+  group_by(species) %>% 
+  summarize(bhco=(sum(cowbird_lgl==1)),
+            total.obs=(sum(cowbird_lgl>=0)),
+            bhco.prop=(bhco/total.obs),
+            avg.NLCD.pag=(mean(NLCD_p_ag)),
+            avg.NLCD.pforest=(mean(NLCD_p_forest)),
+            avg.NLCD.phuman=(mean(NLCD_p_human)),
+            avg.PcpBefore_raw=(mean(PcpBefore_raw)), ## tot precip 365 days before laydate
+            avg.pcpbefore_std_gridmet=(mean(pcpbefore_std_gridmet)), ## tot precip 365 days before laydate
+                                                                    ## minus mean, div by SD
+            avg.Pcp45dAfter_raw=(mean(Pcp45dAfter_raw)), ## total precip 45 days after laydate
+            avg.pcpafter_std_gridmet=(mean(pcpafter_std_gridmet)), ## tot precip 45 days after laydate
+                                                                  ## minus mean, div by SD
+            avg.Tmax_std_gridmet=(mean(Tmax_std_gridmet)), ## max of max daily temps 45 days after
+                                                                  ## laydate, minus mean, div by SD
+            avg.Tmin_std_gridmet=(mean(Tmin_std_gridmet)), ## min of min daily temps 45 days after
+                                                          ## laydate, minus mean, div by SD
+            avg.Tmeanmax=(mean(Tmeanmax)), ## avg max of max daily temps 45 days after laydate
+            avg.Tmeanmin=(mean(Tmeanmin)), ## avg min of min daily temps 45 days after laydate
+            avg.tnestpd_stdmaxsp_gridmet=(mean(tnestpd_stdmaxsp_gridmet)), ## avg max temp of site-date combo relative
+                                                                          ## what spp usually experiences 45 days after
+                                                                          ## laydate
+            avg.tnestpd_stdminsp_gridmet=(mean(tnestpd_stdminsp_gridmet)), ## avg min temp of site-date combo 
+                                                                          ## relative what spp usually experiences 
+                                                                         ## 45 days after laydate
+            avg.tnestpd_meanmax_gridmet=(mean(tnestpd_meanmax_gridmet)), ## max of max daily temps 45 days after
+                                                                          ## laydate, minus mean, div by SD
+            avg.tnestpd_meanmin_gridmet=(mean(tnestpd_meanmin_gridmet))) %>% ## min of min daily temps 45 days after
+                                                                             ## laydate, minus mean, div by SD
+            
+  arrange(desc(bhco.prop))
+
+## most parasitized spp
+bhco.prop.ovr30pct <- bhco.prop.dat %>% 
+  filter(bhco.prop>0.3) %>% 
+  select(species, bhco.prop) %>% 
+  view()
+## top spp: GRFL (n=99,100%), GRVI (n=22,95%), EUST (n=159,65%), 
+## BCTI (n=332,61%), EUST (n=159,65%), PUMA (n=2414,56%), 
+## BEWR (n=750,56%), BRTH (n=49,55%)
+
+#proportion of nests parasitized per habitat type
+## immediate habitat (1m of nest)
+lochab.bhco.prop.dat <- fail.dat %>% 
+  group_by(NewLU1) %>% 
+  summarize(bhco=(sum(cowbird_lgl==1)),
+            total.obs=(sum(cowbird_lgl>=0)),
+            bhco.prop=(bhco/total.obs)) %>% 
+  arrange(desc(bhco.prop))
+## not much difference: range=0.25-0.34
+
+#proportion of nests parasitized vs. precipitation
+
+
+#proportion of nests parasitized per nest substrate
+
+
+# proportion of nests predated
+## not much predation
+## GRFL (n=99,57%), NOFL (n=79,14%)
+pred.prop.dat <- fail.dat %>% 
+  select(species, predation) %>% 
+  summarize(pred.count=(sum(predation==1, na.rm = T)),
+            total.obs=sum(!is.na(species)),
+            pred.prop=(pred.count/total.obs)) %>% 
+  arrange(desc(pred.prop)) %>% 
+  view()
+
+```
+
+#Fun graphs: Proportion of nests parasitized vs land cover measures
+```{r}
+#proportion of nests parasitized vs. proportion land cover (2km radius)
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.NLCD.pag) ## proportion ag, no trend
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.NLCD.pforest) ## proportion forest, semi trend
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.NLCD.phuman) ## proportion human dev, semi trend
+```
+
+#Fun graphs: Proportion of nests parasitized vs precipitation measures
+```{r}
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.PcpBefore_raw) ## tot precip 365 days before laydate
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.pcpbefore_std_gridmet) ## tot precip 365 days before laydate
+                                                                    ## minus mean, div by SD (1980-2000)
+                                                                    ## neg quadratic, centered around 0
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.Pcp45dAfter_raw) ## total precip 45 days after laydate
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.pcpafter_std_gridmet) ## tot precip 45 days after laydate
+                                                                    ## minus mean, div by SD (1980-2000)
+                                                                    ## neg quadratic, centered around 0
+
+## trends: avg.pcpbefore_std_gridmet and avg.pcpafter_std_gridmet, prop BHCO inc as get away from avg
+
+fail.dat$Tmax_std_gridmet[1:10]
+tnestpd_meanmax_gridmet
+fail.dat$tnestpd_meanmin_gridmet[1:10]
+
+```
+
+#Fun graphs: Proportion of nests parasitized vs temp measures
+```{r}
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.Tmeanmax) ## avg max of max daily temps 45 days after laydate
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.Tmeanmin) ## avg min of min daily temps 45 days after laydate
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.Tmax_std_gridmet) ## max of max daily temps 45 days after
+                                                                ## laydate, minus mean, div by SD
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.Tmin_std_gridmet) ## min of min daily temps 45 days after
+                                                                ## laydate, minus mean, div by SD
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.tnestpd_stdmaxsp_gridmet) ## avg max temp of site-date combo relative
+                                                                    ## what spp usually experiences 45 days after
+                                                                   ## laydate
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.tnestpd_stdminsp_gridmet) ## avg min temp of site-date combo 
+                                                                    ## relative what spp usually experiences 
+                                                                   ## 45 days after laydate
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.tnestpd_meanmax_gridmet) ## max of max daily temps 45 days after
+                                                                   ## laydate, minus mean, div by SD
+plot(bhco.prop.dat$bhco.prop~bhco.prop.dat$avg.tnestpd_meanmin_gridmet) ## min of min daily temps 45 days after
+                                                                   ## laydate, minus mean, div by SD
+
+## trends: some things going on ... need to look at again
+```
+
+#Prelim analyses
+
+```{r}
+library(lme4)
+library(tidyverse)
+
+#run the logistic glmm that Katie and Alison ran (success predicted by...)
+## success~stdmax_ag
+## 'control=glmerControl(optimizer="bobyqa")' there to avoid nonconvergence warning in max likelihood estimates
+## model coefficients given on the logit scale
+mod20<-glmer(at_least_one_success ~ Tmax_std_gridmet + pcpbefore_raw_gridmet + NLCD_p_forest + NLCD_p_human + 
+             NLCD_p_ag + substrate_binary + laydate_scaled + (1 | species) + (1 | year) + (1 | Region/UnCoor),
+             data=filter(suc.dat,NewLU1 == "Ag"),family=binomial(link="logit"),control=glmerControl(optimizer=c("bobyqa"),
+                                                                                                 optCtrl=list(maxfun=2e9)))
+
+#run the logistic glmm on cowbird logical
+## cowbird_lgl~stdmax_ag
+bhco_stdmax_ag <- glmer(cowbird_lgl ~ Tmax_std_gridmet + pcpbefore_raw_gridmet + NLCD_p_forest + NLCD_p_human + 
+                 NLCD_p_ag + substrate_binary + laydate_scaled + (1 | species) + (1 | year) + (1 | Region/UnCoor),
+                 data=filter(suc.dat,NewLU1 == "Ag"),family=binomial(link="logit"),control=glmerControl(optimizer=c("bobyqa"),
+                                                                                                     optCtrl=list(maxfun=2e9)))
+summary(bhco_stdmax_ag) ## ## look at model output
+write_rds(bhco_stdmax_ag,'Code/bhco_dataexplore/cowbird_lgl~stdmax_ag.RData')
+
+cowbird_lgl~stdmax_ag.rds
+```
+
+
+```{r}
+#build a logistic regression model for at least one success
+suc.logreg <- glm(at_least_one_success ~ pcpbefore_std_gridmet, 
+                  data=suc.dat, family='binomial')
+summary(suc.logreg) #get model output
+#plot model results
+#get predicted values
+newdata1$rankP <- predict(suc.logreg, newdata = newdata1, type = "response")
+newdata1
+ggplot(suc.dat, aes(x = gre, y = PredictedProb)) + 
+      geom_ribbon(aes(ymin = LL, ymax = UL, fill = rank), alpha = 0.2) 
+      + geom_line(aes(colour = rank), size = 1)
+```
