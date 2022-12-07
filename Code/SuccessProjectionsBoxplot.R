@@ -37,8 +37,10 @@ p1 <- ggplot(df2, aes(x=scenario, y=dif.success)) +
   geom_hline(yintercept=0, linetype="dashed", color = "blue") +
   stat_summary(fun=median, geom="point", size=.8, color="white")+
   scale_x_discrete(labels=labs.scenario) +
-  scale_fill_manual(values = c("orange","orange","purple","purple")) +
-  scale_color_manual(values = c("orange","orange","purple","purple")) +
+  # scale_fill_manual(values = c("orange","orange","purple","purple")) +
+  # scale_color_manual(values = c("orange","orange","purple","purple")) +
+  scale_fill_manual(values = c("#fbb61a","#fbb61a","#320a5e","#320a5e")) +
+  scale_color_manual(values = c("#fbb61a","#fbb61a","#320a5e","#320a5e")) +
   labs(x='\nClimate Scenario',
        y='Difference in nest success')+
   theme_bw() +
@@ -100,8 +102,12 @@ p3 <- ggplot(df3, aes(x=scenario, y=dif.success.conf)) +
   #geom_hline(yintercept=0, linetype="dashed", color = "blue") +
   stat_summary(fun=median, geom="point", size=.8, color="white")+
   scale_x_discrete(labels=labs.scenario) +
-  scale_fill_manual(values = c("orange","orange","purple","purple")) +
-  scale_color_manual(values = c("orange","orange","purple","purple")) +
+  # scale_fill_viridis(discrete = TRUE) +
+  # scale_color_viridis(discrete = TRUE) +
+  # scale_fill_manual(values = c("orange","orange","purple","purple")) +
+  # scale_color_manual(values = c("orange","orange","purple","purple")) +
+  scale_fill_manual(values = c("#fbb61a","#fbb61a","#320a5e","#320a5e")) +
+  scale_color_manual(values = c("#fbb61a","#fbb61a","#320a5e","#320a5e")) +
   labs(x='\nClimate Scenario',
        y='Uncertainty')+
   theme_bw() +

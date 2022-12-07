@@ -13,7 +13,7 @@ library(scales)
 library(forcats)
 
 ## Load baseline model results
-m <- read_rds("results/q12/success~stdmax2laydate2way.AK.RDS")
+m <- read_rds("results/revisions/mainv1_region150eletempspslope.rds")
 m.min <- read_rds("results/q12/success~stdmin2laydate2way.AK.RDS")
 
 ## Load data
@@ -22,9 +22,9 @@ data <- read_rds("Data/active/success-cleaned.rds")
 temp <- range(data$Tmax_std_gridmet) # c(-2, 2) # define range of predictor in standard scale
 temp <- seq(from = temp[1],to = temp[2], length.out = 200) # build dummy temp evenly spread across range
 
-grid=expand.grid(Tmax_std_gridmet = temp, NewLU1= c("Forest","Ag","Natural_open","Human"),pcpbefore_raw_gridmet = 0,NLCD_p_forest= 0, NLCD_p_human=0, NLCD_p_ag=0, substrate_binary=1,laydate_scaled=0,at_least_one_success=1)
+grid=expand.grid(Tmax_std_gridmet = temp, NewLU1= c("Forest","Ag","Natural_open","Human"),pcpbefore_raw_gridmet = 0,NLCD_p_forest= 0, NLCD_p_human=0, NLCD_p_ag=0, substrate_binary=1,laydate_scaled=0,at_least_one_success=1,elevation=0)
 
-grid=cbind(grid[,1],grid[,1]^2,grid[,2:9])
+grid=cbind(grid[,1],grid[,1]^2,grid[,2:10])
 colnames(grid)[1]<-"Tmax_std_gridmet"
 
 colnames(grid)[2]="Tmax_std_gridmet_sq"
@@ -40,9 +40,9 @@ fig_data <- temp_predict(m,grid) %>% mutate(facet = factor(lu,c("Forest","Ag","N
 
 grid.quant=expand.grid(Tmax_std_gridmet = quantile(fig_data$temp,probs = c(.025,.5,.975),na.rm = TRUE),
                        NewLU1= c("Forest","Ag","Natural_open","Human"),
-                       pcpbefore_raw_gridmet = 0,NLCD_p_forest= 0, NLCD_p_human=0, NLCD_p_ag=0, 
+                       pcpbefore_raw_gridmet = 0,NLCD_p_forest= 0, NLCD_p_human=0, NLCD_p_ag=0,elevation=0,
                        substrate_binary=1,laydate_scaled=0,at_least_one_success=1)
-grid.quant=cbind(grid.quant[,1],grid.quant[,1]^2,grid.quant[,2:9])
+grid.quant=cbind(grid.quant[,1],grid.quant[,1]^2,grid.quant[,2:10])
 colnames(grid.quant)[1]<-"Tmax_std_gridmet"
 
 colnames(grid.quant)[2]="Tmax_std_gridmet_sq"
@@ -89,7 +89,7 @@ hist <- ggplot(data = data, aes(x = Tmax_std_gridmet)) +
 
 plot <- ggarrange(p, hist, heights = c(4,1), ncol = 1, nrow = 2, align = "v")
 
-ggsave("figures/F1_q1-facet.png",plot, width = 3, height = 7.5)
+ggsave("figures/F1_q1-facet_mainv2.png",plot, width = 3, height = 7.5)
 
 # p <- ggplot(data = fig_data, aes(temp, predicted)) +
 #   geom_ribbon(aes(ymin = lower, ymax = upper, color = lu, fill = lu), linetype = 2, alpha = .2) + # plot confidence intervals

@@ -295,7 +295,7 @@ map.projection.average.points.density.gradient <- ggarrange(density.gradient.for
 map.projection.average.points.density.gradient
 
 map.projection.average.points.density.gradient <- annotate_figure(map.projection.average.points.density.gradient,
-                bottom = text_grob("Projected change in nest success (current versus 2100; RCP 8.5)", color = "black", size = 20),
+                bottom = text_grob("Projected change in nest success (current versus 2100; RCP 8.5)", color = "black", size = 20, just = c("centre","bottom")),
                 left = text_grob("Density", color = "black", rot = 90,size=24))
 
 map.projection.average.points.density.gradient 

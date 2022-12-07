@@ -1,6 +1,6 @@
 # How to investigate collapsing data and dealing with missing values
 # Authors: Alison Ke and Katherine Lauck
-# Last updated: 2/5/2021
+# Last updated: 9/30/2022
 # 
 # To those writing code to append land use: scroll to end of script to find section. There, source appropriate land use data and copy/paste append code.
 # 
@@ -286,11 +286,21 @@ processed=cbind(processed,NLCD[match(processed$LOC_ID_year,NLCD$LOC_ID_year),1:6
 ##############################################
 
 library(dggridR)
+dggs_350 <- dgconstruct(spacing = 350)
+dggs_300 <- dgconstruct(spacing = 300)
 dggs_250 <- dgconstruct(spacing = 250) # generate hexagonal grid with ~  km betweeen cells
 dggs_200 <- dgconstruct(spacing = 200) # generate hexagonal grid with ~  km betweeen cells
+dggs_150 <- dgconstruct(spacing = 150)
+dggs_100 <- dgconstruct(spacing = 100)
+dggs_50 <- dgconstruct(spacing = 50)
 
+processed$Region350=as.character(dgGEO_to_SEQNUM(dggs_350, processed$lon, processed$lat)$seqnum)
+processed$Region300=as.character(dgGEO_to_SEQNUM(dggs_300, processed$lon, processed$lat)$seqnum)
 processed$Region200=as.character(dgGEO_to_SEQNUM(dggs_200, processed$lon, processed$lat)$seqnum)
 processed$Region250=as.character(dgGEO_to_SEQNUM(dggs_250, processed$lon, processed$lat)$seqnum)
+processed$Region150=as.character(dgGEO_to_SEQNUM(dggs_150, processed$lon, processed$lat)$seqnum)
+processed$Region100=as.character(dgGEO_to_SEQNUM(dggs_100, processed$lon, processed$lat)$seqnum)
+processed$Region50=as.character(dgGEO_to_SEQNUM(dggs_50, processed$lon, processed$lat)$seqnum)
 
 ###############################################
 ## 8. Add gridMET columns##
@@ -319,5 +329,16 @@ gridmetmin <- read_csv("Data/archive/gridMEToutput_v1_tminafter-prcpafter.csv") 
   ungroup()
 
 nest <- gridmetmin
+
+###############################################
+## 8. Add Sollman predictor##
+###############################################
+
+sollman <- read_csv("Data/archive/sollman_spaut_success.csv") %>% dplyr::select(UnCoor,prop_success)
+
+nest <- nest %>% left_join(y = sollman,by = "UnCoor")
+
+is.na(nest$prop_success) %>% sum()
+
 
 save(nest,file='Data/archive/raw-collapsed.RData')

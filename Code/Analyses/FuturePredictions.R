@@ -21,7 +21,7 @@ my.theme = theme(
 
 setwd('/Users/DrBohemio/Documents/Git/nestwatch'); getwd()
 
-success_projections <- read.csv("Data/success_projections.csv")
+success_projections <- read.csv("Data/active/success_projections.csv")
 str(success_projections)
 
 m1 <- readRDS('Results/Question 1-2/success~stdmax2way.AK.RDS')

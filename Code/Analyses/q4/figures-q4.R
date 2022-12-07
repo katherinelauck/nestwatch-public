@@ -12,6 +12,7 @@ library(lme4)
 library(scales)
 library(grid)
 library(gridExtra)
+library(viridis)
 
 ## Load baseline model results
 m.tavgnestpd <- read_rds("results/spatial/success~tavgnestpd_meanmax_gridmet_3way.rds")
@@ -76,8 +77,8 @@ figdata.tavgnestpd <- temp_predict(m.tavgnestpd,grid.tavgnestpd,hot = grid.tavgn
 figdata.rel2sp_anom <- temp_predict(m.rel2sp_anom,grid.rel2sp_anom,hot = grid.rel2sp_anom$tmean_rel2sp_anom)
 figdata.rel2sp_z <- temp_predict(m.rel2sp_z,grid.rel2sp_z,hot = grid.rel2sp_z$tmean_rel2sp_z)
 figdata.tnestpd <- temp_predict(m.tnestpd,grid.tnestpd,hot = grid.tnestpd$tnestpd_meanmax_gridmet)
-figdata.tnestpd_rel2sheard_anom <- temp_predict(m.tnestpd_rel2sheard_anom,grid.tnestpd_rel2sheard_anom,hot = grid.tnestpd_rel2sheard_anom$tnestpd_rel2sheard_anom)
-figdata.tnestpd_rel2sheard_z <- temp_predict(m.tnestpd_rel2sheard_z,grid.tnestpd_rel2sheard_z,hot = grid.tnestpd_rel2sheard_z$tnestpd_rel2sheard_z)
+# figdata.tnestpd_rel2sheard_anom <- temp_predict(m.tnestpd_rel2sheard_anom,grid.tnestpd_rel2sheard_anom,hot = grid.tnestpd_rel2sheard_anom$tnestpd_rel2sheard_anom)
+# figdata.tnestpd_rel2sheard_z <- temp_predict(m.tnestpd_rel2sheard_z,grid.tnestpd_rel2sheard_z,hot = grid.tnestpd_rel2sheard_z$tnestpd_rel2sheard_z)
 
 bigfigdata <- bind_rows(figdata.tavgnestpd,figdata.rel2sp_anom,
                         #figdata.rel2sp_z, 
@@ -166,15 +167,18 @@ names(model.labs) <- c("rel2sp_anom",
 qe.plot <- ggplot(data = filter(figdata.tavgnestpd,lu == "Ag"), mapping = aes(x = temp, y = predicted)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, color = factor(level,levels = c("High","Mean","Low")), fill = factor(level,levels = c("High","Mean","Low"))), linetype = 2, alpha = .2) + # plot confidence intervals
   geom_line(mapping = aes(color = factor(level,levels = c("High","Mean","Low"))), size = 1) + # overlay line
-  #facet_wrap(lu~model, nrow = 4, ncol = 5, labeller = labeller(lu=lu.labs)) + # facet by land use 
+  facet_wrap(~factor(level,levels = c("High","Mean","Low")), nrow = 3, ncol = 1) + # facet by land use 
   #facet_grid(vars(lu), vars(model),labeller = labeller(lu=lu.labs, model = model.labs)) +
   ylab("Proportion of nests with at least\none offspring surviving to fledging") +
   xlab("Maximum temperature anomaly") +
   theme_classic() +
-  guides(color=guide_legend(title="Historical site\ntemperature"),
-         fill = guide_legend(title = "Historical site\ntemperature")
-         )
-ggsave("figures/q4_qe.png",qe.plot,width = 6, height = 4)
+  theme(legend.position = "none") #+
+  # guides(color=guide_legend(title="Historical site\ntemperature"),
+  #        fill = guide_legend(title = "Historical site\ntemperature")
+  #        )# +
+  #scale_fill_viridis(discrete = TRUE, option = "turbo", direction = -1) +
+  #scale_color_viridis(discrete = TRUE, option = "turbo", direction = -1)
+ggsave("figures/FS7_q4_qe.png",qe.plot,width = 3, height = 6)
 
 # p.tavgnestpd <- spatial.plot(figdata.tavgnestpd)
 # p.rel2sp_anom <- spatial.plot(figdata.rel2sp_anom)
@@ -188,7 +192,7 @@ ggsave("figures/q4_qe.png",qe.plot,width = 6, height = 4)
 #                         p.tnestpd,p.tnestpd_stdsp + rremove("ylab"),
 #                         ncol = 5, nrow = 1, align = "h") %>%
 #   annotate_figure(left = textGrob("Proportion of nests with at least one offspring surviving to fledging",rot = 90, vjust = 1))
-ggsave("figures/q4-comparespatial.png",giant.plot,width = 9, height = 7.5)
+# ggsave("figures/q4-comparespatial.png",giant.plot,width = 9, height = 7.5)
 
 
 # Supplemental figure success~tmean_rel2sp_anom_tmax.rds
@@ -208,9 +212,25 @@ make.grid <- function() {
 }
 
 tmean.grid <- make.grid()
-figdata.tmean <- temp_predict(tmean,tmean.grid,hot = tmean.grid$tmean_rel2sp_anom)
+figdata.tmean <- temp_predict(tmean,tmean.grid,hot = tmean.grid$tmean_rel2sp_anom) %>%
+  mutate(level = factor(level,levels = c("High", "Mean","Low")))
 
-tmean.plot <- spatial.plot(figdata.tmean)
+# tmean.plot <- spatial.plot(figdata.tmean) + facet_null()
+
+lu.labs <- c("Forest", "Agriculture", "Natural open", "Developed")
+names(lu.labs) <- c("Forest", "Ag", "Natural_open", "Human")
+
+#show_col(hue_pal()(4))
+tmean.plot <- ggplot(data = figdata.tmean %>% filter(lu == "Ag"), aes(temp, predicted)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, color = level, fill = level), linetype = 2, alpha = .2) + # plot confidence intervals
+  geom_line(aes(col = level),size = 1) + # overlay line
+  #facet_wrap(lu~model, nrow = 4, ncol = 5, labeller = labeller(lu=lu.labs)) + # facet by land use 
+  # facet_grid(vars(lu), vars(model),labeller = labeller(lu=lu.labs, model = model.labs)) +
+  ylab("Proportion of nests with at least one offspring surviving to fledging") +
+  xlab("Maximum temperature anomaly") +
+  theme_classic() +
+  guides(color=guide_legend(title="Historical site\ntemperature"),
+         fill = guide_legend(title = "Historical site\ntemperature"))
 tmean.plot
 
 ggsave("figures/q4-tmean_rel2sp_anom.png",tmean.plot,width = 3, height = 6)

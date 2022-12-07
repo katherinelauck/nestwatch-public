@@ -2,63 +2,72 @@ library("lme4")
 library("sjPlot")
 library("lubridate")
 library("R2jags")
-setwd("~/Google Drive/NestWatch Alison/")
-load("oneAttemptOneRow_ModisWorldClimElevationNLCDDayMet.RData")
-nest<-processed
+library("dplyr")
+
+setwd("~/Documents/nestwatch/Data/active/")
+# load("oneAttemptOneRow_ModisWorldClimElevationNLCDDayMet.RData")
+# nest<-processed
+nest<-readRDS("success-cleaned.rds")
 
 nest$UnCoor<-factor(nest$UnCoor)
-nest$Region<-factor(nest$Region200)
+# nest$Region<-factor(nest$Region200)
+nest$Region<-factor(nest$Region150)
 #NLCD categories: one that is forest vs not
 #one that is human, forest, non-forest
 #LU categories:agriculture, forest, open natural habitats, urban  
+nest$NLCD_p_forest
+nest$NLCD_p_human
+nest$NLCD_p_ag
 
-nest$NLCD_p_forest<-nest$NLCD_decidious_forest_2km+nest$NLCD_evergreen_forest_2km+nest$NLCD_mixed_forest_2km
-nest$NLCD_p_human<-nest$NLCD_developed_open_2km+nest$NLCD_developed_low_2km+nest$NLCD_developed_high_2km+nest$NLCD_developed_medium_2km
-nest$NLCD_p_ag<-nest$NLCD_cultivated_crops_2km+nest$NLCD_pasture_2km
+# nest$NLCD_p_forest<-nest$NLCD_decidious_forest_2km+nest$NLCD_evergreen_forest_2km+nest$NLCD_mixed_forest_2km
+# nest$NLCD_p_human<-nest$NLCD_developed_open_2km+nest$NLCD_developed_low_2km+nest$NLCD_developed_high_2km+nest$NLCD_developed_medium_2km
+# nest$NLCD_p_ag<-nest$NLCD_cultivated_crops_2km+nest$NLCD_pasture_2km
 
-nest$NewLU1<-NA
-nest$NewLU1[nest$habitat1 %in% c("NW-ag","NW-xmas","NW-orch-vin")]<-"Ag"
-nest$NewLU1[nest$habitat1 %in% c("NW-airport","NW-campus","NW-cem","NW-cmpgrd","NW-com-ind","NW-golf","NW-human","NW-park","NW-pit","NW-pwrln","NW-road","NW-ry")]<-"Human"
-nest$NewLU1[nest$habitat1 %in% c("NW-for")]<-"Forest"
-nest$NewLU1[nest$habitat1 %in% c("NW-burn","NW-chap","NW-des","NW-grass","NW-fw","NW-sw","NW-beach","NW-clrcut")]<-"Natural_open"
-#what is com-ind, tun
-nest$NewLU1<-factor(nest$NewLU1)
-nest$substrate<-factor(nest$substrate)
+# nest$NewLU1<-NA
+# nest$NewLU1[nest$habitat1 %in% c("NW-ag","NW-xmas","NW-orch-vin")]<-"Ag"
+# nest$NewLU1[nest$habitat1 %in% c("NW-airport","NW-campus","NW-cem","NW-cmpgrd","NW-com-ind","NW-golf","NW-human","NW-park","NW-pit","NW-pwrln","NW-road","NW-ry")]<-"Human"
+# nest$NewLU1[nest$habitat1 %in% c("NW-for")]<-"Forest"
+# nest$NewLU1[nest$habitat1 %in% c("NW-burn","NW-chap","NW-des","NW-grass","NW-fw","NW-sw","NW-beach","NW-clrcut")]<-"Natural_open"
+# #what is com-ind, tun
+# nest$NewLU1<-factor(nest$NewLU1)
+# nest$substrate<-factor(nest$substrate)
 summary(nest$NewLU1)
 
 #temp variables: tmax_degc_next45, tmin45, tave45,tmax/ave/minprior365,
 #precip var: precip_mmday_next45,precip_prior365
 
 #modify: response variable, temperature max min, precip prior and next. create another variable that's temp max minus min?
-nest$temprange<-nest$noanomoly_max_tmax_Next45-nest$noanomoly_min_tmin_Next45
-nest$temprange<-c(scale(nest$temprange))
-nest$tmax_degc_Next45<-c(scale(nest$noanomoly_max_tmax_Next45))
-nest$tmin_degc_Next45<-c(scale(nest$noanomoly_min_tmin_Next45))
-nest$precip_mmday_Prior365<-c(scale(nest$noanomoly_mean_precip_Prior365))
-nest$precip_mmday_Next45<-c(scale(nest$noanomoly_mean_precip_Next45))
-nest$zmaxanomalytemp<-c(scale(nest$z_anamoly_max_tmax_Next45))
-nest$zminanomalytemp<-c(scale(nest$z_anamoly_mean_tmin_Next45))
-nest$NLCD_p_ag<-c(scale(nest$NLCD_p_ag))
-nest$NLCD_p_forest<-c(scale(nest$NLCD_p_forest))
-nest$NLCD_p_human<-c(scale(nest$NLCD_p_human))
+# nest$temprange<-nest$noanomoly_max_tmax_Next45-nest$noanomoly_min_tmin_Next45
+# nest$temprange<-c(scale(nest$temprange))
+# nest$tmax_degc_Next45<-c(scale(nest$noanomoly_max_tmax_Next45))
+# nest$tmin_degc_Next45<-c(scale(nest$noanomoly_min_tmin_Next45))
+# nest$precip_mmday_Prior365<-c(scale(nest$noanomoly_mean_precip_Prior365))
+# nest$precip_mmday_Next45<-c(scale(nest$noanomoly_mean_precip_Next45))
+# nest$zmaxanomalytemp<-c(scale(nest$z_anamoly_max_tmax_Next45))
+# nest$zminanomalytemp<-c(scale(nest$z_anamoly_mean_tmin_Next45))
+# nest$NLCD_p_ag<-c(scale(nest$NLCD_p_ag))
+# nest$NLCD_p_forest<-c(scale(nest$NLCD_p_forest))
+# nest$NLCD_p_human<-c(scale(nest$NLCD_p_human))
 
 #only use most common species
-summary(factor(nest$species))[1:20]
+sort(summary(factor(nest$species)),decreasing=T)[1:38]
 
 nest<-as_tibble(nest)
-nest.filtered<-dplyr::filter(nest,
-                             species %in% names(summary(factor(nest$species)))[1:20],
-                             is.na(zmaxanomalytemp)==FALSE,
-                            is.na(zminanomalytemp)==FALSE,
-                            is.na(NewLU1)==FALSE,
-                            is.na(precip_mmday_Prior365)==FALSE,
-                            is.na(NLCD_p_forest)==FALSE,
-                            is.na(NLCD_p_human)==FALSE,       
-                            is.na(NLCD_p_ag)==FALSE,     
-                            is.na(year)==FALSE,    
-                            is.na(Region200)==FALSE,    
-                            is.na(UnCoor)==FALSE)   
+# nest.filtered<-dplyr::filter(nest,
+#                              species %in% names(sort(summary(factor(nest$species)),decreasing=T))[1:38],
+#                              is.na(zmaxanomalytemp)==FALSE,
+#                             is.na(zminanomalytemp)==FALSE,
+#                             is.na(NewLU1)==FALSE,
+#                             is.na(precip_mmday_Prior365)==FALSE,
+#                             is.na(NLCD_p_forest)==FALSE,
+#                             is.na(NLCD_p_human)==FALSE,       
+#                             is.na(NLCD_p_ag)==FALSE,     
+#                             is.na(year)==FALSE,    
+#                             is.na(Region200)==FALSE,    
+#                             is.na(UnCoor)==FALSE)   
 
+nest.filtered<-dplyr::filter(nest,
+                             species %in% names(sort(summary(factor(nest$species)),decreasing=T))[1:38])
 
 ###Jags code
 
@@ -89,8 +98,8 @@ nestwatch.sp <- function(d,
     tau.sp<-1/sig.year^2
     sig.region~dunif(0, 10)
     tau.region<-1/sig.region^2
-    sig.uncoor~dunif(0, 10)
-    tau.uncoor<-1/sig.uncoor^2
+    # sig.uncoor~dunif(0, 10)
+    # tau.uncoor<-1/sig.uncoor^2
     for(i in 1:4){
       alpha.LU[i]~dnorm(0,.001)
       for(j in 1:20){
@@ -113,13 +122,16 @@ nestwatch.sp <- function(d,
     for(i in 1:nrows){
 at_least_one_success[i]~dbern(p[i])
 
+      
+#B0[LU[i]] + a0[Species[i]] + a1[LU[i],Species[i]]*Tmax[i] + B1*Precip[i] + B2* Forest[i] + B3*Dev[i] + B4*Ag[i] + B5*Substrate[i] + B6*Laydate[i] + γ0[year[i]] + γ1[region[i]]
+      
 #confused about how to do nested random effects
 logit(p[i])<-beta.tmax*zmaxanomalytemp[i] +
-            beta.tmin*zminanomalytemp[i] +
+            # beta.tmin*zminanomalytemp[i] +
             alpha.LU[NewLU1[i]] +
             alpha.sp[Species[i]] +
             beta.tmaxxLUxSp[NewLU1[i],Species[i]]*zmaxanomalytemp[i] +
-            beta.tminxLUxSp[NewLU1[i],Species[i]]*zminanomalytemp[i] +
+            # beta.tminxLUxSp[NewLU1[i],Species[i]]*zminanomalytemp[i] +
             beta.precip*precip_mmday_Prior365[i] +
             beta.NLCD.for*NLCD_p_forest[i] +
             beta.NLCD.human*NLCD_p_human[i] +
@@ -133,16 +145,16 @@ logit(p[i])<-beta.tmax*zmaxanomalytemp[i] +
   } 
             R2jags::jags(data=list(
               at_least_one_success=nest.filtered$at_least_one_success,
-              zmaxanomalytemp=nest.filtered$zmaxanomalytemp,
-              zminanomalytemp=nest.filtered$zminanomalytemp,
+              zmaxanomalytemp=nest.filtered$Tmax_std_gridmet,
+              # zminanomalytemp=nest.filtered$zminanomalytemp,
               NewLU1=as.numeric(factor(nest.filtered$NewLU1)),
               Species=as.numeric(factor(nest.filtered$species)),
-              precip_mmday_Prior365=nest.filtered$precip_mmday_Prior365,
+              precip_mmday_Prior365=nest.filtered$pcpbefore_raw_gridmet,
               NLCD_p_forest=nest.filtered$NLCD_p_forest,
               NLCD_p_human=nest.filtered$NLCD_p_human,
               NLCD_p_ag=nest.filtered$NLCD_p_ag,
               year=as.numeric(factor(nest.filtered$year)),
-              region=as.numeric(factor(nest.filtered$Region200)),
+              region=as.numeric(factor(nest.filtered$Region150)),
              # uncoor=as.numeric(factor(nest.filtered$UnCoor)),
               nrows=nrow(nest.filtered)
             ),

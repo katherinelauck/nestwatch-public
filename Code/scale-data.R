@@ -1,23 +1,25 @@
 # Prepare data for analyses. This script's input is "Data/archive/raw-collapsed.RData" and it outputs properly scaled data clean of NAs, with one database for success-based models and one for failure-based models.
 # Author: Katherine S Lauck
-# Last updated: 27 April 2021
+# Last updated: 10 Oct 2022
 
 # Dependencies
 
 library(GGally)
 library(afex)
 library("lme4")
-library("sjPlot")
 library("lubridate")
 library(tidyverse)
 library(fuzzyjoin)
 
-load("Data/archive/raw-collapsed.RData")
+load("Data/active/raw-collapsed.RData")
 
 #### Factorize spatial autocorrelation variables
 
 nest$UnCoor<-factor(nest$UnCoor)
 nest$Region<-factor(nest$Region200)
+nest$Region150 <- factor(nest$Region150)
+nest$Region100 <- factor(nest$Region100)
+nest$Region50 <- factor(nest$Region50)
 
 #### Create land use factor
 #NLCD categories: one that is forest vs not
@@ -27,6 +29,14 @@ nest$Region<-factor(nest$Region200)
 nest$NLCD_p_forest<-nest$NLCD_decidious_forest_2km+nest$NLCD_evergreen_forest_2km+nest$NLCD_mixed_forest_2km
 nest$NLCD_p_human<-nest$NLCD_developed_open_2km+nest$NLCD_developed_low_2km+nest$NLCD_developed_high_2km+nest$NLCD_developed_medium_2km
 nest$NLCD_p_ag<-nest$NLCD_cultivated_crops_2km+nest$NLCD_pasture_2km
+
+nest$NLCD_p_forest_500m<-nest$NLCD_decidious_forest_500m+nest$NLCD_evergreen_forest_500m+nest$NLCD_mixed_forest_500m
+nest$NLCD_p_human_500m<-nest$NLCD_developed_open_500m+nest$NLCD_developed_low_500m+nest$NLCD_developed_high_500m+nest$NLCD_developed_medium_500m
+nest$NLCD_p_ag_500m<-nest$NLCD_cultivated_crops_500m+nest$NLCD_pasture_500m
+
+nest$NLCD_p_forest_1km<-nest$NLCD_decidious_forest_1km+nest$NLCD_evergreen_forest_1km+nest$NLCD_mixed_forest_1km
+nest$NLCD_p_human_1km<-nest$NLCD_developed_open_1km+nest$NLCD_developed_low_1km+nest$NLCD_developed_high_1km+nest$NLCD_developed_medium_1km
+nest$NLCD_p_ag_1km<-nest$NLCD_cultivated_crops_1km+nest$NLCD_pasture_1km
 
 nest$NewLU1<-NA
 nest$NewLU1[nest$habitat1 %in% c("NW-ag","NW-xmas","NW-orch-vin")]<-"Ag"
@@ -166,13 +176,18 @@ nest$year <- as.factor(nest$year)
 
 nest <- mutate(nest,Tmax_std_gridmet_sq = Tmax_std_gridmet * Tmax_std_gridmet)
 
+nest$lat_sq <- nest$lat * nest$lat
+nest$lon_sq <- nest$lon * nest$lon
+
 #### Select columns in any models and ones we might want to build in the future
 
 nest <- nest %>% 
-  dplyr::select("attempt", "species","Trend","Trend.scaled", "ConservationScore", "ConservationScore.scaled","substrate_binary", "cavity_binary","laydate","laydate_scaled","year","at_least_one_success","at_least_one_failure","NewLU1","Region","UnCoor","Tmax_std_gridmet","Tmax_std_gridmet_sq","Tmin_std_gridmet","Tmeanmax","tnestpd_stdmaxsp_gridmet","Tmeanmin","tnestpd_stdminsp_gridmet","AnnualTave_WorldClim","tmeanmax_avgnestpd_gridmet","tmeanmin_avgnestpd_gridmet","tmean_rel2sp_z","tmean_rel2sp_anom","NLCD_p_ag","NLCD_p_forest","NLCD_p_human","PcpBefore_raw","pcpbefore_std_gridmet","Pcp45dAfter_raw","pcpafter_std_gridmet","max_cowbird","fail_cowbird","cowbird_lgl","predation","outcome")
+  dplyr::select("attempt", "species","Trend","Trend.scaled", "ConservationScore", "ConservationScore.scaled","substrate_binary", "cavity_binary","laydate","laydate_scaled","year","at_least_one_success","at_least_one_failure","NewLU1","Region350","Region300","Region250","Region","Region150","Region100","Region50","UnCoor","lat","lon","lat_sq","lon_sq","Tmax_std_gridmet","Tmax_std_gridmet_sq","Tmin_std_gridmet","Tmeanmax","tnestpd_stdmaxsp_gridmet","Tmeanmin","tnestpd_stdminsp_gridmet","AnnualTave_WorldClim","tmeanmax_avgnestpd_gridmet","tmeanmin_avgnestpd_gridmet","tmean_rel2sp_z","tmean_rel2sp_anom","NLCD_p_ag","NLCD_p_forest","NLCD_p_human","NLCD_p_ag_500m","NLCD_p_forest_500m","NLCD_p_human_500m","NLCD_p_ag_1km","NLCD_p_forest_1km","NLCD_p_human_1km","PcpBefore_raw","pcpbefore_std_gridmet","Pcp45dAfter_raw","pcpafter_std_gridmet","max_cowbird","fail_cowbird","cowbird_lgl","predation","outcome","prop_success")
+
+ele_key <- read_csv("Data/active/elevation.csv") %>% select(UnCoor,elevation)
+nest <- left_join(x = nest,y = ele_key,by = "UnCoor")
 
 apply(nest,2,function(x){sum(is.na(x))})
-
 
 #### Drop NAs
 
@@ -226,17 +241,32 @@ success <- success %>% group_by(species) %>%
   mutate(greaterThan100 = if_else(n()<100,0,1))
 success$species <- as.factor(success$species)
 
-#### Scale appropriate columns
+#### Scale & square appropriate columns
 success$pcpbefore_raw_gridmet <- c(scale(success$PcpBefore_raw))
+success$pcpbefore_raw_gridmet_sq <- success$pcpbefore_raw_gridmet * success$pcpbefore_raw_gridmet
 success$pcpafter_raw_gridmet <- c(scale(success$Pcp45dAfter_raw))
+success$pcpafter_raw_gridmet_sq <- success$pcpafter_raw_gridmet * success$pcpafter_raw_gridmet
+success$pcpafter_std_gridmet_sq <- success$pcpafter_std_gridmet * success$pcpafter_std_gridmet
 success$tnestpd_meanmin_gridmet <- c(scale(success$Tmeanmin))
 success$tnestpd_meanmax_gridmet <- c(scale(success$Tmeanmax))
 success$NLCD_p_ag <- c(scale(success$NLCD_p_ag))
 success$NLCD_p_forest <- c(scale(success$NLCD_p_forest))
 success$NLCD_p_human <- c(scale(success$NLCD_p_human))
+success$NLCD_p_ag_500m <- c(scale(success$NLCD_p_ag_500m))
+success$NLCD_p_forest_500m <- c(scale(success$NLCD_p_forest_500m))
+success$NLCD_p_human_500m <- c(scale(success$NLCD_p_human_500m))
+success$NLCD_p_ag_1km <- c(scale(success$NLCD_p_ag_1km))
+success$NLCD_p_forest_1km <- c(scale(success$NLCD_p_forest_1km))
+success$NLCD_p_human_1km <- c(scale(success$NLCD_p_human_1km))
 success$tmeanmax_avgnestpd_gridmet_scaled <- c(scale(success$tmeanmax_avgnestpd_gridmet))
 success$tmeanmin_avgnestpd_gridmet_scaled <- c(scale(success$tmeanmin_avgnestpd_gridmet))
 success$tmean_rel2sp_anom <- c(scale(success$tmean_rel2sp_anom))
+success$elevation = c(scale(success$elevation))
+success$sollman = c(scale(success$prop_success))
+success$lat <- c(scale(success$lat))
+success$lon <- c(scale(success$lon))
+success$lat_sq <- c(scale(success$lat_sq))
+success$lon_sq <- c(scale(success$lon_sq))
 
 #### Write data
 

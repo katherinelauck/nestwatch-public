@@ -1,0 +1,22 @@
+#!/bin/bash
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_1km_linear.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_1km_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_1km_quad.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_500m_linear.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_500m_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_500m_quad.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_eletemp_linear.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_eletemp_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_eletemp_quad.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_lat_linear.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_lat_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_lat_quad.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_res16_linear.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_res16_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_res16_quad.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_spslope_linear.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_spslope_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_spslope_quad.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_withregion_linear.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_withregion_noint.sh
+sbatch /home/kslauck/projects/nestwatch/Code/Analyses/revisions/mainv1_withregion_quad.sh

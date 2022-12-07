@@ -1,0 +1,4 @@
+require(furrr)
+files <- c("Code/Analyses/revisions/mainv1_luxpafter_linear.R","Code/Analyses/revisions/mainv1_luxpafter_linear_ag.R","Code/Analyses/revisions/mainv1_luxpafter_linear_forest.R","Code/Analyses/revisions/mainv1_luxpafter_linear_human.R","Code/Analyses/revisions/mainv1_luxpafter_linear_open.R","Code/Analyses/revisions/mainv1_luxpafter_noint.R","Code/Analyses/revisions/mainv1_luxpafter_noint_ag.R","Code/Analyses/revisions/mainv1_luxpafter_noint_forest.R","Code/Analyses/revisions/mainv1_luxpafter_noint_human.R","Code/Analyses/revisions/mainv1_luxpafter_noint_open.R","Code/Analyses/revisions/mainv1_luxpafter_quad.R","Code/Analyses/revisions/mainv1_luxpafter_quad_ag.R","Code/Analyses/revisions/mainv1_luxpafter_quad_forest.R","Code/Analyses/revisions/mainv1_luxpafter_quad_human.R","Code/Analyses/revisions/mainv1_luxpafter_quad_open.R")
+plan(multisession)
+future_map(files,source)
