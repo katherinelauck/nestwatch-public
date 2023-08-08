@@ -1,0 +1,5 @@
+library("lme4"); library(tidyverse); d <- read_rds('Data/active/success-cleaned.rds')
+load('Data/active/raw-collapsed.RData')
+nest <- left_join(d,select(nest,c("attempt","habitat1")),by = "attempt")
+mod<-glmer(formula = at_least_one_success ~ Tmax_std_gridmet + Tmax_std_gridmet_sq + NewLU1 + pcpbefore_raw_gridmet + NLCD_p_forest + NLCD_p_human + NLCD_p_ag + substrate_binary + laydate_scaled + (1 | species) + (1 | year) + (1 | Region/UnCoor), data = filter(nest,!(habitat1 %in% c("NW-xmas","NW-orch-vin"))), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e+05)))
+write_rds(mod,"results/revisions/mainv1_noagtree_noint.rds")

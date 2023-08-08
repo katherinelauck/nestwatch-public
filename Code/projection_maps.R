@@ -494,26 +494,26 @@ average.per.location.rcp.85e.uncertainty.developed <- merge(locations,agg.rcp.85
 map.forest.uncertainty <- ggplot() + geom_polygon(data = map.usa, aes(x=long, y = lat, group = group), fill = NA, color = "black")  + my.theme.map +
   geom_point(data = average.per.location.rcp.85e.uncertainty.forest, mapping = aes(x=lon, y=lat, colour = rcp.85e.uncertainty*100),size =1.5, alpha =0.5) +
   scale_color_gradient(name = "",low ="forestgreen" ,high = "hotpink2",labels = scales::percent_format(accuracy = 1,scale=1,c(expression("","","","","",">"))),breaks = seq(from = 0, to = 20, by = 4),limits = c(0,20),oob = squish) +
-  theme(legend.position = "") + ggtitle("Forest")+ labs(x=NULL, y=NULL) 
+  theme(legend.position = "",plot.title = element_text(hjust = .2,vjust = -4)) + ggtitle("Forest")+ labs(x=NULL, y=NULL) 
 map.forest.uncertainty
 
 map.ag.uncertainty <- ggplot() + geom_polygon(data = map.usa, aes(x=long, y = lat, group = group), fill = NA, color = "black")  + my.theme.map +
   geom_point(data = average.per.location.rcp.85e.uncertainty.ag, mapping = aes(x=lon, y=lat, colour = rcp.85e.uncertainty*100), size =1.5, alpha = 0.5) +
   scale_color_gradient(name = "",low ="forestgreen" ,high = "hotpink2",labels = scales::percent_format(accuracy = 1,scale=1,c(expression("","","","","",">"))), breaks = seq(from = 0, to = 20, by = 4),limits = c(0,20), oob = squish) +
-  theme(legend.position = "") + ggtitle("Agriculture") + labs(x=NULL, y=NULL) 
+  theme(legend.position = "",plot.title = element_text(hjust = .2,vjust = -4)) + ggtitle("Agriculture") + labs(x=NULL, y=NULL) 
 
 map.ag.uncertainty
 
 map.natural.open.uncertainty <- ggplot() + geom_polygon(data = map.usa, aes(x=long, y = lat, group = group), fill = NA, color = "black")  + my.theme.map +
   geom_point(data = average.per.location.rcp.85e.uncertainty.natural.open, mapping = aes(x=lon, y=lat, colour = rcp.85e.uncertainty*100),size =1.5, alpha =0.5) +
 scale_color_gradient(name = "",low ="forestgreen" ,high = "hotpink2",labels = scales::percent_format(accuracy = 1,scale=1,c(expression("","","","","",">"))),breaks = seq(from = 0, to = 20, by = 4),limits = c(0,20), oob = squish) +
-  theme(legend.position = "") + ggtitle("Natural open") + labs(x=NULL, y=NULL)
+  theme(legend.position = "",plot.title = element_text(hjust = .2,vjust = -4)) + ggtitle("Natural open") + labs(x=NULL, y=NULL)
 map.natural.open.uncertainty
 
 map.developed.uncertainty <- ggplot() + geom_polygon(data = map.usa, aes(x=long, y = lat, group = group), fill = NA, color = "black")  + my.theme.map +
   geom_point(data = average.per.location.rcp.85e.uncertainty.developed , mapping = aes(x=lon, y=lat, colour = rcp.85e.uncertainty*100),size =1.5, alpha =0.5) +
 scale_color_gradient(name = "",low ="forestgreen" ,high = "hotpink2",labels = scales::percent_format(accuracy = 1,scale=1,c(expression("","","","","",">"))),breaks = seq(from = 0, to = 20, by = 4),limits = c(0,20), oob = squish) +
-  theme(legend.position = "") + ggtitle("Developed") + labs(x=NULL, y=NULL)
+  theme(legend.position = "",plot.title = element_text(hjust = .2,vjust = -4)) + ggtitle("Developed") + labs(x=NULL, y=NULL)
 map.developed.uncertainty
 
 
@@ -536,6 +536,8 @@ map.uncertainty.average.points <- annotate_figure(map.uncertainty.average.points
                                                                                      color = "black", size = 16))
 
 map.uncertainty.average.points
+
+
 
 ggsave(map.uncertainty.average.points,device="png",filename = "figures/map.uncertainty.average.points.20percent.rcp85e.png",
        width = 150, height = 350, units = c( "mm"))

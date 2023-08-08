@@ -1,4 +1,4 @@
-rm(list=ls())
+
 
 library(tidyverse)
 library(cowplot)
@@ -41,12 +41,12 @@ p1 <- ggplot(df2, aes(x=scenario, y=dif.success)) +
   # scale_color_manual(values = c("orange","orange","purple","purple")) +
   scale_fill_manual(values = c("#fbb61a","#fbb61a","#320a5e","#320a5e")) +
   scale_color_manual(values = c("#fbb61a","#fbb61a","#320a5e","#320a5e")) +
-  labs(x='\nClimate Scenario',
+  labs(x='Climate Scenario',
        y='Difference in nest success')+
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        panel.background = element_rect(colour = "black", size=1),
+        panel.background = element_rect(colour = "black", linewidth=1),
         legend.position = "none") +
   facet_grid(rows = vars(NewLU1),
              labeller = labeller(NewLU1 = labs.LU))
@@ -71,12 +71,12 @@ p1
 # p2
 
 df3 <- df %>%
-  select(contains('y.dif.average.10'), contains('y.dif.average.90'), NewLU1) %>%
+  dplyr::select(contains('y.dif.average.10'), contains('y.dif.average.90'), NewLU1) %>%
   mutate(y.dif.average.conf.rcp.45m = abs(y.dif.average.90.rcp.45m - y.dif.average.10.rcp.45m),
          y.dif.average.conf.rcp.45e = abs(y.dif.average.90.rcp.45e - y.dif.average.10.rcp.45e),
          y.dif.average.conf.rcp.85m = abs(y.dif.average.90.rcp.85m - y.dif.average.10.rcp.85m),
          y.dif.average.conf.rcp.85e = abs(y.dif.average.90.rcp.85e - y.dif.average.10.rcp.85e)) %>%
-  select(contains('conf'), NewLU1) %>%
+  dplyr::select(contains('conf'), NewLU1) %>%
   pivot_longer(-NewLU1,names_to='scenario', values_to='dif.success.conf') %>%
   mutate(scenario = as.factor(scenario)) %>%
   as.data.frame()
@@ -108,22 +108,23 @@ p3 <- ggplot(df3, aes(x=scenario, y=dif.success.conf)) +
   # scale_color_manual(values = c("orange","orange","purple","purple")) +
   scale_fill_manual(values = c("#fbb61a","#fbb61a","#320a5e","#320a5e")) +
   scale_color_manual(values = c("#fbb61a","#fbb61a","#320a5e","#320a5e")) +
-  labs(x='\nClimate Scenario',
-       y='Uncertainty')+
+  labs(x='Climate Scenario',
+       y='Climate model uncertainty')+
   theme_bw() +
+  ylim(0,.784) +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        panel.background = element_rect(colour = "black", size=1),
+        panel.background = element_rect(colour = "black", linewidth=1),
         legend.position = "none") +
   facet_grid(rows = vars(NewLU1),
              labeller = labeller(NewLU1 = labs.LU))
 p3
 
 
-plot <- plot_grid(p1, p3,
-          ncol = 2, nrow=1,
-          labels = c("A","B"), label_size = 20, scale=.9)
+plot <- plot_grid(p1, p3,ptt2,
+          ncol = 3, nrow=1,
+          labels = c("A","B","C"), label_size = 20) # requires ptt2 from Code/Analyses/revisions/beta_uncertainty_projections.R
 plot
 
 ggsave('figures/violinplots.projections.png',
-       width = 8, height = 5) 
+       width = 8.5, height = 5)

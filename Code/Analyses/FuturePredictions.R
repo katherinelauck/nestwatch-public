@@ -19,12 +19,10 @@ my.theme = theme(
   plot.margin = margin(4,4,4,4))
 
 
-setwd('/Users/DrBohemio/Documents/Git/nestwatch'); getwd()
-
 success_projections <- read.csv("Data/active/success_projections.csv")
 str(success_projections)
 
-m1 <- readRDS('Results/Question 1-2/success~stdmax2way.AK.RDS')
+m1 <- readRDS('results/q12/success~stdmax2way.AK.RDS')
 #need to get updated model from Alison where temperature anomalies are used
 #once the temperature z-scores are used, those do not need to be transformed or scaled
 #precipitation is raw, so Alison scales precip, I use those values to transform raw data from climate success_projections

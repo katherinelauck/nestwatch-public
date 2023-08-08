@@ -12,7 +12,7 @@ library(dggridR)
 
 d <- read_rds("Data/active/success-cleaned.rds")
 
-hex_res <- seq(12,20)
+hex_res <- seq(6,20) # res 6 approximately corresponds to 200km between centers of neighboring hexes. See: http://cran.nexr.com/web/packages/dggridR/vignettes/dggridR.html and convert area to side length
 grids <- hex_res %>% map(~ dgconstruct(res = .))
 
 make_thinned_dataset <- function(data,grid) {
@@ -39,11 +39,11 @@ l <- map(grids, ~ make_thinned_dataset(data = d, grid = .)) %>%
 model <- function(data,name) {
   library("lme4"); library(tidyverse)
   mod<-glmer(formula = at_least_one_success ~ Tmax_std_gridmet * NewLU1 + Tmax_std_gridmet_sq * NewLU1 + pcpbefore_raw_gridmet + NLCD_p_forest + NLCD_p_human + NLCD_p_ag + substrate_binary + laydate_scaled + (1 | species) + (1 | year) + (1 | Region), data = data, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e+06)))
-  write_rds(mod,paste0("results/revisions/mainv1_",name,"quad.rds"))
-  mod<-glmer(formula = at_least_one_success ~ Tmax_std_gridmet * NewLU1 + pcpbefore_raw_gridmet + NLCD_p_forest + NLCD_p_human + NLCD_p_ag + substrate_binary + laydate_scaled + (1 | species) + (1 | year) + (1 | Region), data = data, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e+06)))
-  write_rds(mod,paste0("results/revisions/mainv1_",name,"linear.rds"))
-  mod<-glmer(formula = at_least_one_success ~ Tmax_std_gridmet + NewLU1 + pcpbefore_raw_gridmet + NLCD_p_forest + NLCD_p_human + NLCD_p_ag + substrate_binary + laydate_scaled + (1 | species) + (1 | year) + (1 | Region), data = data, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e+06)))
-  write_rds(mod,paste0("results/revisions/mainv1_",name,"noint.rds"))
+  write_rds(mod,paste0("results/revisions/mainv1_oneperhex",name,"quad.rds"))
+  # mod<-glmer(formula = at_least_one_success ~ Tmax_std_gridmet * NewLU1 + pcpbefore_raw_gridmet + NLCD_p_forest + NLCD_p_human + NLCD_p_ag + substrate_binary + laydate_scaled + (1 | species) + (1 | year) + (1 | Region), data = data, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e+06)))
+  # write_rds(mod,paste0("results/revisions/mainv1_",name,"linear.rds"))
+  # mod<-glmer(formula = at_least_one_success ~ Tmax_std_gridmet + NewLU1 + pcpbefore_raw_gridmet + NLCD_p_forest + NLCD_p_human + NLCD_p_ag + substrate_binary + laydate_scaled + (1 | species) + (1 | year) + (1 | Region), data = data, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e+06)))
+  # write_rds(mod,paste0("results/revisions/mainv1_",name,"noint.rds"))
   write_rds(data,paste0("results/revisions/mainv1_",name,"data.rds"))
 }
 

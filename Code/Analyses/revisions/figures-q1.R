@@ -11,6 +11,7 @@ library(ggpubr)
 library(lme4)
 library(scales)
 library(forcats)
+library(INLA)
 
 ## Load baseline model results
 m <- read_rds("results/revisions/mainv1_withregion.rds")
@@ -68,7 +69,7 @@ f_labels <- data.frame(lu = factor(c("Forest", "Ag", "Natural_open", "Human")), 
 
 p <- ggplot(data = fig_data, aes(temp, predicted)) +
   geom_ribbon(aes(ymin = lower, ymax = upper, color = lu, fill = lu), linetype = 2, alpha = .2) + # plot confidence intervals
-  geom_line(aes(color = lu), size = 1) + # overlay line
+  geom_line(aes(color = lu), linewidth = 1) + # overlay line
   facet_wrap(~lu, nrow = 4, ncol = 1, labeller = labeller(lu=lu.labs)) + # facet by land use 
   ylab("Proportion of nests with at least one offspring surviving to fledging") +
   # xlab("Mean maximum temperature over nesting period (z-scaled)") +
@@ -79,7 +80,8 @@ p <- ggplot(data = fig_data, aes(temp, predicted)) +
         axis.ticks.x=element_blank()) +
   scale_color_manual(values = c("#7CAE00","#F8766D","#00BFC4","#C77CFF")) +
   scale_fill_manual(values = c("#7CAE00","#F8766D","#00BFC4","#C77CFF")) +
-  geom_text(x = -2, y = .25, aes(label = label), data = f_labels)
+  geom_text(x = -2, y = .25, aes(label = label), data = f_labels) +
+  ylim(0,.95)
 
 hist <- ggplot(data = data, aes(x = Tmax_std_gridmet)) +
   geom_histogram() + 
@@ -90,6 +92,94 @@ hist <- ggplot(data = data, aes(x = Tmax_std_gridmet)) +
 plot <- ggarrange(p, hist, heights = c(4,1), ncol = 1, nrow = 2, align = "v")
 
 ggsave("figures/F1_q1-facet.png",plot, width = 3, height = 7.5)
+
+### Alison's version of q1 figure
+
+figdata <- read_rds("figures/NestwatchBayesianPred.RDS") %>%
+  pivot_longer(cols = c(forest_pred_mean:developed_pred_high),
+               names_to = c("habitat","type"),
+               names_pattern = "(forest|agriculture|naturalopen|developed)_pred_(mean|median|low|high)") %>%
+  pivot_wider(names_from = type,values_from = value)
+
+lu.labs <- c("Forest", "Agriculture", "Natural open", "Developed")
+names(lu.labs) <- c("forest", "agriculture", "naturalopen", "developed")
+f_labels <- data.frame(facet = factor(c("forest", "agriculture", "naturalopen", "developed")), 
+                       label = c("*", "*", "","")) ## significance labels for each facet
+
+(p2 <- figdata %>%
+  mutate(facet = factor(habitat,levels = c("forest","agriculture","naturalopen","developed"))) %>%
+  ggplot(aes(temps, mean)) +
+  geom_ribbon(aes(ymin = low, ymax = high, color = facet, fill = facet), linetype = 2, alpha = .2) + # plot confidence intervals
+  geom_line(aes(color = facet), linewidth = 1) + # overlay line
+  facet_wrap(~facet, nrow = 4, ncol = 1, labeller = labeller(facet=lu.labs)) + # facet by land use 
+  ylab("Proportion of nests with at least one offspring surviving to fledging") +
+  # xlab("Mean maximum temperature over nesting period (z-scaled)") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  scale_color_manual(values = c("#7CAE00","#F8766D","#00BFC4","#C77CFF")) +
+  scale_fill_manual(values = c("#7CAE00","#F8766D","#00BFC4","#C77CFF")) +
+  geom_text(x = -2, y = .25, aes(label = label), data = f_labels) +
+    ylim(0,.95))
+
+bayes <- read_rds("results/revisions_jags/sp_analysis_jags_102622.RDS")
+bayes <- bayes$model$data()$Tmax_std_gridmet %>% tibble()
+
+
+(hist2 <- ggplot(data = bayes, aes(x = .)) + # uses data embedded in the bayesian model
+  geom_histogram() + 
+  xlab("Maximum temperature anomaly") +
+  ylab("Frequency") +
+  theme_classic())
+
+plot2 <- ggarrange(p2, hist2, heights = c(4,1), ncol = 1, nrow = 2, align = "v")
+ggsave("figures/F1_q1-facet_Alison.png",plot2, width = 3, height = 7.5)
+plot3 <- ggarrange(p2 + 
+                     rremove("y.axis") + 
+                     rremove("ylab") + 
+                     rremove("y.text") + 
+                     rremove("y.ticks"),
+                   hist2 + 
+                     rremove("y.axis") + 
+                     rremove("ylab") + 
+                     rremove("y.text") + 
+                     rremove("y.ticks"), 
+                   heights = c(4,1), ncol = 1, nrow = 2, align = "v")
+(plot4 <- ggarrange(annotate_figure(plot,fig.lab = "a)",fig.lab.pos = "top.left"),
+                   annotate_figure(plot3,fig.lab = "b)",fig.lab.pos = "top.left"),
+                   align = "hv",widths = c(1,.86)))
+ggsave("figures/F1_q1-main_with_AK.png",plot4,width = 6.5, height = 7.5)
+
+### Estimate success changes using Alison's model
+
+filter(figdata,temps %in% quantile(figdata$temps,probs = c(.025,.5,.975),na.rm = TRUE))
+
+## Plot using output of INLA model
+
+m <- read_rds("results/revisions/inla_autocorr_0.30.5.rds")
+
+temp_predict_inla <- function(model,grid) {
+  mm=model$model.matrix
+  predicted = mm %*% summary(model)$fixed[,"mean"] 
+  pvar1 <- diag(mm %*% vcov(model) %*% t(mm)) # need to specify in INLA runs that I want the vcov to be produced
+  return(bind_cols(lu = grid$NewLU1,temp = grid$Tmax_std_gridmet, predicted = inv.logit(predicted), lower = inv.logit(predicted-2*sqrt(pvar1)), upper = inv.logit(predicted+2*sqrt(pvar1)))) # bind into dataframe & return
+}
+
+fig_data <- temp_predict_inla(m,grid) %>% mutate(facet = factor(lu,c("Forest","Ag","Natural_open","Human"),ordered = TRUE))
+
+grid.quant=expand.grid(Tmax_std_gridmet = quantile(fig_data$temp,probs = c(.025,.5,.975),na.rm = TRUE),
+                       NewLU1= c("Forest","Ag","Natural_open","Human"),
+                       pcpbefore_raw_gridmet = 0,NLCD_p_forest= 0, NLCD_p_human=0, NLCD_p_ag=0,elevation=0,
+                       substrate_binary=1,laydate_scaled=0,at_least_one_success=1)
+grid.quant=cbind(grid.quant[,1],grid.quant[,1]^2,grid.quant[,2:10])
+colnames(grid.quant)[1]<-"Tmax_std_gridmet"
+
+colnames(grid.quant)[2]="Tmax_std_gridmet_sq"
+
+quant <- temp_predict_inla(m,grid.quant)
+
 
 # p <- ggplot(data = fig_data, aes(temp, predicted)) +
 #   geom_ribbon(aes(ymin = lower, ymax = upper, color = lu, fill = lu), linetype = 2, alpha = .2) + # plot confidence intervals

@@ -235,7 +235,7 @@ setwd("..")
 m.max <- read_rds("results/revisions/mainv1_withregion.rds")
 m.min <- read_rds("results/q12/success~stdmin2laydate2way.AK_quad.RDS")
 m.p.after <- read_rds("results/revisions/mainv1_luxpafter_quad.rds")
-m.p.before <- read_rds("results/revisions/mainv1_luxpafter_quad.rds")
+m.p.before <- read_rds("results/revisions/mainv1_luxpbefore_quad.rds")
 
 max <- summary(m.max)$coefficients
 Predictor <- rownames(max)
@@ -333,12 +333,15 @@ squared_validation_table_data <- function(groups,models) {
   models <- filter(models,group == groups) %>% pull(file)
   
   get_lu_coef <- function(model) {
+    print(substitute(model))
     coef <- fixef(model)
+    print(names(coef))
     if("pcpbefore_raw_gridmet_sq" %in% names(coef)) {assign("var","pcpbefore_raw_gridmet")
     } else if("pcpafter_std_gridmet_sq" %in% names(coef)) {assign("var","pcpafter_std_gridmet")
     } else if("Tmax_std_gridmet_sq" %in% names(coef)) {assign("var","Tmax_std_gridmet")
     } else if("Tmin_std_gridmet_sq" %in% names(coef)) {assign("var","Tmin_std_gridmet")
-            }
+    }
+    print(var)
     if(deparse(substitute(model)) %>% str_detect("quad")) {
       out <- tibble(lu = rep(c("Agriculture","Forest","Natural_open","Human")),
                     Var = c(coef[paste0(var)] + coef[paste0(var,":NewLU1Ag")],
@@ -398,9 +401,12 @@ models <- tibble(file = c("results/revisions/mainv1_withregion_quad.rds",
                           "results/revisions/mainv1_eletemp_quad.rds",
                           "results/revisions/mainv1_eletemp_linear.rds",
                           "results/revisions/mainv1_eletemp_noint.rds",
-                          "results/revisions/mainv1_spslope_quad.rds",
-                          "results/revisions/mainv1_spslope_linear.rds",
-                          "results/revisions/mainv1_spslope_noint.rds",
+                          #"results/revisions/mainv1_spslope_quad.rds",
+                          #"results/revisions/mainv1_spslope_linear.rds",
+                          #"results/revisions/mainv1_spslope_noint.rds",
+                          "results/revisions/mainv1_noagtree_quad.rds",
+                          "results/revisions/mainv1_noagtree_linear.rds",
+                          "results/revisions/mainv1_noagtree_noint.rds",
                           "results/revisions/mainv1_nopred_quad.rds",
                           "results/revisions/mainv1_nopred_linear.rds",
                           "results/revisions/mainv1_nopred_noint.rds",
@@ -413,16 +419,27 @@ models <- tibble(file = c("results/revisions/mainv1_withregion_quad.rds",
                           "results/revisions/mainv1_1km_quad.rds",
                           "results/revisions/mainv1_1km_linear.rds",
                           "results/revisions/mainv1_1km_noint.rds",
-                          "results/revisions/mainv1_res16_quad.rds",
-                          "results/revisions/mainv1_res16_linear.rds",
-                          "results/revisions/mainv1_res16_noint.rds",
+                          #"results/revisions/mainv1_res16_quad.rds",
+                          #"results/revisions/mainv1_res16_linear.rds",
+                          #"results/revisions/mainv1_res16_noint.rds",
                           "results/revisions/mainv1_luxpbefore_quad.rds",
                           "results/revisions/mainv1_luxpbefore_linear.rds",
                           "results/revisions/mainv1_luxpbefore_noint.rds",
                           "results/revisions/mainv1_luxpafter_quad.rds",
                           "results/revisions/mainv1_luxpafter_linear.rds",
                           "results/revisions/mainv1_luxpafter_noint.rds"),
-                 group = rep(c("Base model: TA = Maximum temperature anomaly","Minimum temperature anomaly","Latitude","Elevation * temp","Temp * species random slope","Predation observations removed","Extreme temp observations removed","Landscape 500m buffer","Landscape 1km buffer","Thinned","Total precip 365 days before laydate","Precip anomaly 45 days after laydate"),each = 3))
+                 group = rep(c("Base model: TA = Maximum temperature anomaly 45 days after lay date",
+                               "Minimum temperature anomaly",
+                               "Latitude",
+                               "Elevation * temp",
+                               #"Temp * species random slope",
+                               "Christmas tree farms, vinyards, orchards removed",
+                               "Predation observations removed",
+                               "Extreme temp observations removed",
+                               "Landscape 500m buffer","Landscape 1km buffer",
+                               #"Thinned",
+                               "Total precip 365 days before laydate",
+                               "Precip anomaly 45 days after laydate"),each = 3))
 
 fig_data <- map_dfr(models$group %>% unique(),squared_validation_table_data,models)
 
@@ -440,20 +457,58 @@ fig_data <- map_dfr(models$group %>% unique(),squared_validation_table_data,mode
 # min_sq <- anova(min.txlu,m.min)[2,]
 # min_linear <- bind_rows(anova(min.linear,min.txlu)[2,],anova(min.linear,min.txlu)[1,])
 
-tab_mainresult <- fig_data %>% filter(group %in% c("Base model: TA = Maximum temperature anomaly","Minimum temperature anomaly","Total precip 365 days before laydate","Precip anomaly 45 days after laydate")) %>%
+#to do:
+# 1. inla data is missing squared term betas; need to edit inla_intval.R to extract those betas
+# 2. rename beta_ag and beta2_ag columns to beta_ag_mean/beta2_ag_mean instead for easy manipulation
+# 3. use pivot_longer to make make a lu, measure (mean, low, high), and coef (beta or beta2) columns.
+# 4. use pivot_wider to bring values out to beta and beta2 columns.
+
+inla <- read_csv("results/revisions/inla_intval.csv") %>% 
+  left_join(read_csv("results/revisions/morani_inla.csv"),by = c("type","mesh")) %>%
+  pivot_longer(beta_ag_mean:beta2_human_high,
+               names_to = c("coef","lu","measure"),
+               names_sep = "_",) %>%
+  pivot_wider(names_from = coef,values_from = value) %>%
+  filter(mesh == "2000_2500",measure %in% c("mean","low","high")) %>%
+  mutate(group = rep("Spatial autocorrelation with INLA",times = 12),
+         npar = NA,
+         AIC = waic,
+         BIC = NA,
+         logLik = NA,
+         deviance = NA,
+         Chisq = NA,
+         Df = NA,
+         `Pr(>Chisq)` = NA,
+         Var = beta,
+         `Var^2` = beta2,
+         Model = type,
+         `Var^2` = replace(`Var^2`,Model != "quad" & lu == "forest",NA),
+         Var = replace(Var,Model == "noint" & lu == "forest", NA)) %>%
+  dplyr::select(c(npar,AIC,BIC,logLik,deviance,Chisq,`Pr(>Chisq)`,lu,Var,`Var^2`,Model,group))
+  
+
+tab_mainresult <- fig_data %>% filter(group %in% c("Base model: TA = Maximum temperature anomaly 45 days after lay date","Minimum temperature anomaly","Total precip 365 days before laydate","Precip anomaly 45 days after laydate")) %>%
+  #rows_append(inla) %>%
   mutate_at(c("Chisq"), round, digits = 2) %>%
   mutate_at(c("AIC"), round, digits = 0) %>%
   mutate_at(c("Pr(>Chisq)","Var","Var^2"),round, digits = 3) %>%
   rename(TA = Var,`TA^2` = `Var^2`) %>%
   tibble() %>%
   select(AIC,Chisq,`Pr(>Chisq)`,lu,group,TA,`TA^2`) %>%
-  mutate(lu = replace(lu,lu == "Human","Developed"),lu = replace(lu,lu == "Natural_open","Natural open")) %>%
+  mutate(lu = replace(lu,lu == "Human","Developed"),
+         lu = replace(lu,lu == "Natural_open","Natural open"),
+         lu = replace(lu,lu == "ag","Agriculture"),
+         lu = replace(lu,lu == "forest","Forest"),
+         lu = replace(lu,lu == "human","Developed"),
+         lu = replace(lu,lu == "open","Natural open")) %>%
   mutate(lu = factor(lu,levels = c("Forest","Agriculture","Natural open","Developed"))) %>%
   mutate(Model = rep(c("TA^2 * LU + TA * LU", "TA^2 + TA * LU", "TA^2 + TA + LU"),each = 4, times = length(unique(group))), .before = AIC) %>%
   rename(P = `Pr(>Chisq)`) %>%
   group_by(group) %>%
   mutate(row=row_number(),
          P = if_else(P == 0.000,"<0.001",as.character(P)),
+         TA = if_else(TA == 0.000,"<0.001",as.character(TA)),
+         `TA^2` = if_else(`TA^2` == 0.000,"<0.001",as.character(`TA^2`)),
          TA = as.character(TA),
          `TA^2` = as.character(`TA^2`)) %>%
   pivot_longer(-c(group, row, Model,lu,AIC,Chisq,P)) %>%
@@ -479,20 +534,31 @@ setwd("figures")
 gtsave(filename = "TS3_mainresult.html", data = tab_mainresult)
 setwd("..")
 
-tab_val <- fig_data %>% filter(group %in% c("Base model: TA = Maximum temperature anomaly","Latitude","Elevation * temp","Temp * species random slope","Predation observations removed","Extreme temp observations removed","Landscape 500m buffer","Landscape 1km buffer","Thinned")) %>%
+##### Sensitivity table (Table S7)
+
+
+tab_val <- fig_data %>% filter(group %in% c("Base model: TA = Maximum temperature anomaly 45 days after lay date","Latitude","Elevation * temp","Temp * species random slope","Christmas tree farms, vinyards, orchards removed","Predation observations removed","Extreme temp observations removed","Landscape 500m buffer","Landscape 1km buffer")) %>%
+  rows_append(inla) %>%
   mutate_at(c("Chisq"), round, digits = 2) %>%
   mutate_at(c("AIC"), round, digits = 0) %>%
   mutate_at(c("Pr(>Chisq)","Var","Var^2"),round, digits = 3) %>%
   rename(TA = Var,`TA^2` = `Var^2`) %>%
   tibble() %>%
   select(AIC,Chisq,`Pr(>Chisq)`,lu,group,TA,`TA^2`) %>%
-  mutate(lu = replace(lu,lu == "Human","Developed"),lu = replace(lu,lu == "Natural_open","Natural open")) %>%
+  mutate(lu = replace(lu,lu == "Human","Developed"),
+         lu = replace(lu,lu == "Natural_open","Natural open"),
+         lu = replace(lu,lu == "ag","Agriculture"),
+         lu = replace(lu,lu == "forest","Forest"),
+         lu = replace(lu,lu == "human","Developed"),
+         lu = replace(lu,lu == "open","Natural open")) %>%
   mutate(lu = factor(lu,levels = c("Forest","Agriculture","Natural open","Developed"))) %>%
   mutate(Model = rep(c("TA^2 * LU + TA * LU", "TA^2 + TA * LU", "TA^2 + TA + LU"),each = 4, times = length(unique(group))), .before = AIC) %>%
   rename(P = `Pr(>Chisq)`) %>%
   group_by(group) %>%
   mutate(row=row_number(),
          P = if_else(P == 0.000,"<0.001",as.character(P)),
+         TA = if_else(TA == 0.000,"<0.001",as.character(TA)),
+         `TA^2` = if_else(`TA^2` == 0.000,"<0.001",as.character(`TA^2`)),
          TA = as.character(TA),
          `TA^2` = as.character(`TA^2`)) %>%
   pivot_longer(-c(group, row, Model,lu,AIC,Chisq,P)) %>%
@@ -517,6 +583,16 @@ tab_val <- fig_data %>% filter(group %in% c("Base model: TA = Maximum temperatur
 setwd("figures")
 gtsave(filename = "TS6_sensitivity.html", data = tab_val)
 setwd("..")
+
+#### Diff in Moran's I between 2000 mesh model and noautocorr model
+
+morani <- read_csv("results/revisions/morani_inla.csv")
+filter(morani,model == "inla_noautocorr")$observed - filter(morani,model == "inla_quad_2000_2500")$observed
+
+#### Diff in Moran's I between no region model and region model
+
+autocorr <- read_csv("Manuscript/revision3/autocorr_model_tracking.csv")
+abs(filter(autocorr,model == "mainv1_withregion")$observed-filter(autocorr,model == "mainv1_noregion")$observed)
 
 #### Squared temp validation table - per land use (Table S4)
 
@@ -543,8 +619,35 @@ models <- tibble(file = c("results/q12/success~notemp_ag.rds",
            "results/revisions/mainv1_luxpafter_noint_ag.rds",
            "results/revisions/mainv1_luxpafter_noint_forest.rds",
            "results/revisions/mainv1_luxpafter_noint_open.rds",
-           "results/revisions/mainv1_luxpafter_noint_human.rds"),
-           group = rep(c("Var = Maximum temperature anomaly","Var = Total precipitation 45 days after laydate"),each = 12)
+           "results/revisions/mainv1_luxpafter_noint_human.rds",
+           "results/q12/success~stdmin2_ag.rds",
+           "results/q12/success~stdmin2_forest.rds",
+           "results/q12/success~stdmin2_open.rds",
+           "results/q12/success~stdmin2_human.rds",
+           "results/revisions/stdmin_linear_ag.rds",
+           "results/revisions/stdmin_linear_forest.rds",
+           "results/revisions/stdmin_linear_open.rds",
+           "results/revisions/stdmin_linear_human.rds",
+           "results/revisions/stdmin_noint_ag.rds",
+           "results/revisions/stdmin_noint_forest.rds",
+           "results/revisions/stdmin_noint_open.rds",
+           "results/revisions/stdmin_noint_human.rds",
+           "results/revisions/mainv1_luxpbefore_quad_ag.rds",
+           "results/revisions/mainv1_luxpbefore_quad_forest.rds",
+           "results/revisions/mainv1_luxpbefore_quad_open.rds",
+           "results/revisions/mainv1_luxpbefore_quad_human.rds",
+           "results/revisions/pcpbefore_linear_ag.rds",
+           "results/revisions/pcpbefore_linear_forest.rds",
+           "results/revisions/pcpbefore_linear_open.rds",
+           "results/revisions/pcpbefore_linear_human.rds",
+           "results/revisions/pcpbefore_noint_ag.rds",
+           "results/revisions/pcpbefore_noint_forest.rds",
+           "results/revisions/pcpbefore_noint_open.rds",
+           "results/revisions/pcpbefore_noint_human.rds"),
+           group = rep(c("Var = Maximum temperature anomaly",
+                         "Var = Total precipitation 45 days after laydate",
+                         "Var = Minimum temperature anomaly",
+                         "Var = Total precipitation 365 days before laydate"),each = 12)
 )
 
 squared_validation_table_data <- function(lu,groups,models) {
@@ -552,7 +655,7 @@ squared_validation_table_data <- function(lu,groups,models) {
   models <- filter(models,group == groups) %>% pull(file) %>% str_subset(lu)
   notemp <- read_rds(str_subset(models,"(notemp)|(noint)"))
   linear_temp <- read_rds(str_subset(models,"(stdmax(?!2))|(linear)"))
-  temp_sq <- read_rds(str_subset(models,"(stdmax2)|(temp_sq)|(quad)"))
+  temp_sq <- read_rds(str_subset(models,"(stdmax2)|(stdmin2)|(temp_sq)|(quad)"))
   
   if(lu == "ag") {
     lu <- "Agriculture"
@@ -591,7 +694,7 @@ fig_data <- map2_dfr(.x = rep(c("ag","forest","open","human"),
                      squared_validation_table_data,
                      models = models)
 
-tab_sq_ta <- fig_data %>% filter(Group == "Var = Maximum temperature anomaly") %>%
+(tab_sq_ta <- fig_data %>% filter(Group == "Var = Maximum temperature anomaly") %>%
   mutate(Chisq = Chisq %>% round(digits = 2), AIC = AIC %>% round(digits = 0)) %>%
   mutate(across(c("Pr(>Chisq)","Temp Coef","Temp^2 Coef"),round, digits = 3)) %>%
   select(AIC,Chisq,`Pr(>Chisq)`,`Temp Coef`,`Temp^2 Coef`,lu,Model) %>%
@@ -601,9 +704,9 @@ tab_sq_ta <- fig_data %>% filter(Group == "Var = Maximum temperature anomaly") %
   rename(`TA coef` = "Temp Coef",`TA^2 coef` = "Temp^2 Coef") %>%
   mutate(P = if_else(P == 0.000, "<0.001",as.character(P))) %>%
   mutate(Model = fct_recode(Model,`TA + TA^2` = "Var + Var^2",TA = "Var",`No temp term` = "No Var term")) %>%
-  # group_by(lu) %>%
+  group_by(lu) %>%
   pivot_longer(-c(lu, Model)) %>%
-  pivot_wider(names_from=c(lu, name), values_from=value) %>%
+  pivot_wider(names_from=c(Model), values_from=value) %>%
   # rename(Statistic = name) %>%
   # select(-row) %>%
   # mutate(`Agriculture_P` = if_else(`Agriculture_P` == 0.000,"<0.001",as.character(`Agriculture_P`))) %>%
@@ -611,28 +714,69 @@ tab_sq_ta <- fig_data %>% filter(Group == "Var = Maximum temperature anomaly") %
   # mutate(`Developed_P` = if_else(`Developed_P` == 0.000,"<0.001",as.character(`Developed_P`))) %>%
   # mutate(`Natural open_P` = if_else(`Natural open_P` == 0.000,"<0.001",as.character(`Natural open_P`))) %>%
   # group_by(lu) %>%
-  gt() %>% 
+  gt(rowname_col = "name") %>% 
   tab_options(data_row.padding = px(1)) %>%
   tab_spanner_delim(delim="_") %>%
-  tab_style(cell_text(style = "italic"),cells_row_groups())  %>%
-  tab_style(
-    style = cell_borders(
-      sides = c("right"),
-      weight = px(1.5),
-      color = "lightgrey"
-    ),
-    locations = cells_body(
-      columns = c(`Agriculture_TA^2 coef`,`Forest_TA^2 coef`,`Natural open_TA^2 coef`),
-    )
+  tab_style(cell_text(style = "italic"),cells_row_groups())  #%>%
+  # tab_style(
+  #   style = cell_borders(
+  #     sides = c("right"),
+  #     weight = px(1.5),
+  #     color = "lightgrey"
+  #   ),
+  #   locations = cells_body(
+  #     columns = c(`Agriculture_TA^2 coef`,`Forest_TA^2 coef`,`Natural open_TA^2 coef`),
+  #   )
+  # )
   )
 
 setwd("figures")
-gtsave(filename = "TS4_squared-validation_ta.html", data = tab_sq_ta)
+gtsave(filename = "TS4_squared-validation_ta.html", data = tab_sq_ta)w
 setwd("..")
 
-tab_sq_pcp <- fig_data %>% filter(Group == "Var = Total precipitation 45 days after laydate") %>%
+(tab_sq_min <- fig_data %>% filter(Group == "Var = Minimum temperature anomaly") %>%
+    mutate(Chisq = Chisq %>% round(digits = 2), AIC = AIC %>% round(digits = 0)) %>%
+    mutate(across(c("Pr(>Chisq)","Temp Coef","Temp^2 Coef"),\(x) round(x, digits = 3))) %>%
+    select(AIC,Chisq,`Pr(>Chisq)`,`Temp Coef`,`Temp^2 Coef`,lu,Model) %>%
+    rename(P = `Pr(>Chisq)`) %>%
+    mutate(lu = factor(lu,levels = c("Forest","Agriculture","Natural open","Developed"))) %>%
+    mutate(across(c("AIC","Chisq","Temp Coef","Temp^2 Coef"),as.character)) %>%
+    rename(`TA coef` = "Temp Coef",`TA^2 coef` = "Temp^2 Coef") %>%
+    mutate(P = if_else(P == 0.000, "<0.001",as.character(P))) %>%
+    #mutate(Model = fct_recode(Model,`TA + TA^2` = "Var + Var^2",TA = "Var",`No temp term` = "No Var term")) %>%
+    group_by(lu) %>%
+    pivot_longer(-c(lu, Model)) %>%
+    pivot_wider(names_from=c(lu,name), values_from=value) %>%
+    # rename(Statistic = name) %>%
+    # select(-row) %>%
+    # mutate(`Agriculture_P` = if_else(`Agriculture_P` == 0.000,"<0.001",as.character(`Agriculture_P`))) %>%
+    # mutate(`Forest_P` = if_else(`Forest_P` == 0.000,"<0.001",as.character(`Forest_P`))) %>%
+    # mutate(`Developed_P` = if_else(`Developed_P` == 0.000,"<0.001",as.character(`Developed_P`))) %>%
+    # mutate(`Natural open_P` = if_else(`Natural open_P` == 0.000,"<0.001",as.character(`Natural open_P`))) %>%
+    # group_by(lu) %>%
+    gt(rowname_col = "name") %>% 
+    tab_options(data_row.padding = px(1)) %>%
+    tab_spanner_delim(delim="_") %>%
+    tab_style(cell_text(style = "italic"),cells_row_groups())  #%>%
+  # tab_style(
+  #   style = cell_borders(
+  #     sides = c("right"),
+  #     weight = px(1.5),
+  #     color = "lightgrey"
+  #   ),
+  #   locations = cells_body(
+  #     columns = c(`Agriculture_TA^2 coef`,`Forest_TA^2 coef`,`Natural open_TA^2 coef`),
+  #   )
+  # )
+)
+
+setwd("figures")
+gtsave(filename = "TS9_squared-validation_min_perlu.html", data = tab_sq_min)
+setwd("..")
+
+(tab_sq_pcp_after <- fig_data %>% filter(Group == "Var = Total precipitation 45 days after laydate") %>%
   mutate(Chisq = Chisq %>% round(digits = 2), AIC = AIC %>% round(digits = 0)) %>%
-  mutate(across(c("Pr(>Chisq)","Temp Coef","Temp^2 Coef"),round, digits = 3)) %>%
+  mutate(across(c("Pr(>Chisq)","Temp Coef","Temp^2 Coef"),\(x) round(x,digits = 3))) %>%
   select(AIC,Chisq,`Pr(>Chisq)`,`Temp Coef`,`Temp^2 Coef`,lu,Model) %>%
   rename(P = `Pr(>Chisq)`) %>%
   mutate(lu = factor(lu,levels = c("Forest","Agriculture","Natural open","Developed"))) %>%
@@ -663,10 +807,49 @@ tab_sq_pcp <- fig_data %>% filter(Group == "Var = Total precipitation 45 days af
     locations = cells_body(
       columns = c(`Agriculture_Precip^2 coef`,`Forest_Precip^2 coef`,`Natural open_Precip^2 coef`),
     )
-  )
+  ))
 
 setwd("figures")
-gtsave(filename = "TS9_squared-validation_pcp.html", data = tab_sq_pcp)
+gtsave(filename = "TS9_squared-validation_pcp_after.html", data = tab_sq_pcp_after)
+setwd("..")
+
+(tab_sq_pcp_before <- fig_data %>% filter(Group == "Var = Total precipitation 365 days before laydate") %>%
+    mutate(Chisq = Chisq %>% round(digits = 2), AIC = AIC %>% round(digits = 0)) %>%
+    mutate(across(c("Pr(>Chisq)","Temp Coef","Temp^2 Coef"),\(x) round(x,digits = 3))) %>%
+    select(AIC,Chisq,`Pr(>Chisq)`,`Temp Coef`,`Temp^2 Coef`,lu,Model) %>%
+    rename(P = `Pr(>Chisq)`) %>%
+    mutate(lu = factor(lu,levels = c("Forest","Agriculture","Natural open","Developed"))) %>%
+    mutate(across(c("AIC","Chisq","Temp Coef","Temp^2 Coef"),as.character)) %>%
+    rename(`Precip coef` = "Temp Coef",`Precip^2 coef` = "Temp^2 Coef") %>%
+    mutate(P = if_else(P == 0.000, "<0.001",as.character(P))) %>%
+    mutate(Model = fct_recode(Model,`PA + PA^2` = "Var + Var^2",PA = "Var",`No precip term` = "No Var term")) %>%
+    # group_by(lu) %>%
+    pivot_longer(-c(lu, Model)) %>%
+    pivot_wider(names_from=c(lu, name), values_from=value) %>%
+    # rename(Statistic = name) %>%
+    # select(-row) %>%
+    # mutate(`Agriculture_P` = if_else(`Agriculture_P` == 0.000,"<0.001",as.character(`Agriculture_P`))) %>%
+    # mutate(`Forest_P` = if_else(`Forest_P` == 0.000,"<0.001",as.character(`Forest_P`))) %>%
+    # mutate(`Developed_P` = if_else(`Developed_P` == 0.000,"<0.001",as.character(`Developed_P`))) %>%
+    # mutate(`Natural open_P` = if_else(`Natural open_P` == 0.000,"<0.001",as.character(`Natural open_P`))) %>%
+    # group_by(lu) %>%
+    gt() %>% 
+    tab_options(data_row.padding = px(1)) %>%
+    tab_spanner_delim(delim="_") %>%
+    tab_style(cell_text(style = "italic"),cells_row_groups())  %>%
+    tab_style(
+      style = cell_borders(
+        sides = c("right"),
+        weight = px(1.5),
+        color = "lightgrey"
+      ),
+      locations = cells_body(
+        columns = c(`Agriculture_Precip^2 coef`,`Forest_Precip^2 coef`,`Natural open_Precip^2 coef`),
+      )
+    ))
+
+setwd("figures")
+gtsave(filename = "TS9_squared-validation_pcpbefore.html", data = tab_sq_pcp_before)
 setwd("..")
 
 ##### Table S5: nests in each land cover subcategory.
@@ -680,7 +863,7 @@ setwd("figures")
 gtsave(filename = "TS5_habitatTable.html", data = tab)
 setwd("..")
 
-##### Table 7: Bayesian table
+##### Table 5: Bayesian table
 
 bayes <- read_csv("figures/jags_table_103122.csv") %>%
   #filter(if_any(Agriculture:`Natural Open`, ~ str_count(.x,"-") == 0 | str_count(.x,"-") == 3)) %>%
@@ -819,16 +1002,17 @@ tab_triple <- bind_rows(ccs, cavity,substrate) %>%
   mutate_at("Pr(>Chisq)",round, digits = 3) %>%
   tibble() %>%
   select(AIC,Chisq,`Pr(>Chisq)`) %>%
-  mutate(interaction = rep(c("Conservation score","Cavity vs not","Nestbox vs not"), each = 2), Model = rep(c("Triple interaction", "No triple interaction"), times = 3), .before = AIC) %>%
+  mutate(interaction = rep(c("Conservation score pooled variation","Conservation score partitioned variation","Cavity vs not","Nestbox vs not"), each = 2), Model = rep(c("Triple interaction", "No triple interaction"), times = 3), .before = AIC) %>%
   rename(P = `Pr(>Chisq)`) %>%
   group_by(interaction) %>%
   mutate(row=row_number()) %>% 
   pivot_longer(-c(interaction, row, Model)) %>%
   pivot_wider(names_from=c(interaction, name), values_from=value) %>%
   select(-row) %>%
-  mutate(`Conservation score_P` = if_else(`Conservation score_P` == 0.000,"<0.001",as.character(`Conservation score_P`))) %>%
+  mutate(`Conservation score pooled variation_P` = if_else(`Conservation score pooled variation_P` == 0.000,"<0.001",as.character(`Conservation score pooled variation_P`))) %>%
   mutate(`Nestbox vs not_P` = if_else(`Nestbox vs not_P` == 0.000,"<0.001",as.character(`Nestbox vs not_P`))) %>%
   mutate(`Cavity vs not_P` = if_else(`Cavity vs not_P` == 0.000,"<0.001",as.character(`Cavity vs not_P`))) %>%
+  mutate(`Conservation score partitioned variation_P` = if_else(`Conservation score partitioned variation_P` == 0.000,"<0.001",as.character(`Conservation score partitioned variation_P`))) %>%
   gt() %>% tab_options(data_row.padding = px(1)) %>%
   tab_spanner_delim(
     delim="_"
@@ -845,6 +1029,141 @@ tab_triple <- bind_rows(ccs, cavity,substrate) %>%
   )
 
 gtsave(filename = "figures/TS11_triple_validation.html", data = tab_triple)
+
+# sp slope table for trait and spatial models
+
+triple <- read_rds("results/revisions/conscore_stdmaxlaydate3way_spslope_triple.rds")
+double <- read_rds("results/revisions/conscore_stdmaxlaydate3way_spslope_double.rds")
+
+ccs <- anova(triple, double) %>% map_df(rev)
+
+triple <- read_rds("results/revisions/cavity_stdmaxlaydate3way_spslope_triple.rds")
+double <- read_rds("results/revisions/cavity_stdmaxlaydate3way_spslope_double.rds")
+
+cavity <- anova(triple, double) %>% map_df(rev)
+
+triple <- read_rds("results/revisions/substrate_stdmaxlaydate3way_spslope_triple.rds")
+double <- read_rds("results/revisions/substrate_stdmaxlaydate3way_spslope_double.rds")
+
+substrate <- anova(triple, double) %>% map_df(rev)
+
+triple <- read_rds("results/revisions/tavgnestpd_meanmax_gridmet_stdmaxlaydate3way_spslope_triple.rds")
+double <- read_rds("results/revisions/tavgnestpd_meanmax_gridmet_stdmaxlaydate3way_spslope_double.rds")
+
+tavgnestpd_meanmax_gridmet <- anova(triple, double) %>% map_df(rev)
+
+triple <- read_rds("results/revisions/tmean_rel2sp_anom_stdmaxlaydate3way_spslope_triple.rds")
+double <- read_rds("results/revisions/tmean_rel2sp_anom_stdmaxlaydate3way_spslope_double.rds")
+
+tmean_rel2sp_anom <- anova(triple, double) %>% map_df(rev)
+
+triple <- read_rds("results/revisions/tnestpd_meanmax_gridmet_stdmaxlaydate3way_spslope_triple.rds")
+double <- read_rds("results/revisions/tnestpd_meanmax_gridmet_stdmaxlaydate3way_spslope_double.rds")
+
+tnestpd_meanmax_gridmet <- anova(triple, double) %>% map_df(rev)
+
+triple <- read_rds("results/revisions/tnestpd_stdmaxsp_gridmet_stdmaxlaydate3way_spslope_triple.rds")
+double <- read_rds("results/revisions/tnestpd_stdmaxsp_gridmet_stdmaxlaydate3way_spslope_double.rds")
+
+tnestpd_stdmaxsp_gridmet <- anova(triple, double) %>% map_df(rev)
+
+tab_triple <- bind_rows(ccs, cavity,substrate,tavgnestpd_meanmax_gridmet,
+                        tmean_rel2sp_anom,tnestpd_meanmax_gridmet,tnestpd_stdmaxsp_gridmet) %>%
+  mutate_at(c("AIC", "Chisq"), round, digits = 2) %>%
+  mutate_at("Pr(>Chisq)",round, digits = 3) %>%
+  tibble() %>%
+  select(AIC,Chisq,`Pr(>Chisq)`) %>%
+  mutate(interaction = rep(c("Conservation score","Cavity vs not","Nestbox vs not","Mean historical max spring temp","Mean annual temp relative to species range average","Mean max historical nest period temp","Mean max historical nest period temp relative to same per species in Nestwatch database"), each = 2), Model = rep(c("Triple interaction", "No triple interaction"), times = 7), .before = AIC) %>%
+  rename(P = `Pr(>Chisq)`) %>%
+  group_by(interaction) %>%
+  pivot_longer(-c(interaction,Model)) %>%
+  pivot_wider(names_from=c(Model), values_from=value) %>%
+  gt(rowname_col = "name") %>% tab_options(data_row.padding = px(1))
+
+gtsave(filename = "figures/FSX_tripleval_spslope.html", data = tab_triple)
+
+# sp slope table per land use for trait and temp models
+
+make_anovas <- function(prefix,lu) {
+  triple <- read_rds(paste0("results/revisions/",prefix,"_stdmaxlaydate3way_spslope_triple_",lu,".rds"))
+  double <- read_rds(paste0("results/revisions/",prefix,"_stdmaxlaydate3way_spslope_double_",lu,".rds"))
+  return(anova(triple, double) %>% map_df(rev) %>% mutate(lu = lu,interaction = prefix))
+}
+
+prefix <- c("conscore","cavity","substrate","tavgnestpd_meanmax_gridmet","tmean_rel2sp_anom",
+            "tnestpd_meanmax_gridmet","tnestpd_stdmaxsp_gridmet")
+lu <- c("ag","forest","open","human")
+
+params <- expand.grid(prefix,lu) %>% tibble()
+
+fig_data <- map2(params$Var1,params$Var2,make_anovas) %>%
+  list_rbind()
+
+(tab_triple_perlu_spslope <- fig_data %>%
+  mutate_at(c("AIC", "Chisq"), round, digits = 2) %>%
+  mutate_at("Pr(>Chisq)",round, digits = 3) %>%
+  tibble() %>%
+  select(AIC,Chisq,`Pr(>Chisq)`,interaction,lu) %>%
+  mutate(interaction = recode_factor(interaction,
+                                     conscore = "Conservation score",
+                                     cavity = "Cavity or not",
+                                     substrate = "Substrate or not",
+                                     tavgnestpd_meanmax_gridmet = "Mean maximum spring temperature standardized by historical values",
+                                     tmean_rel2sp_anom = "Mean temperature standardized by mean range temperature per species",
+                                     tnestpd_meanmax_gridmet = "Mean maximum nest period temperatures standardized by historical values",
+                                     tnestpd_stdmaxsp_gridmet = "Mean maximum nest period temperature standardized by historical mean maximum nest period temperature per species as observed in the nestwatch database")) %>%
+  mutate(Model = rep(c("Triple interaction", "No triple interaction"), times = 28),.before = AIC) %>%
+  rename(P = `Pr(>Chisq)`) %>%
+  group_by(interaction) %>%
+  pivot_longer(-c(lu,interaction,Model)) %>%
+  pivot_wider(names_from=c(Model), values_from=value) %>%
+  rename(`Land cover type` = lu) %>%
+  gt(rowname_col = "name") %>% tab_options(data_row.padding = px(1)))
+
+gtsave(filename = "figures/TSX_tripleval_perlu_spslope.html", data = tab_triple_perlu_spslope)
+
+# per land use triple validation for trait and temp models
+
+make_anovas <- function(prefix,lu) {
+  triple <- read_rds(paste0("results/revisions/",prefix,"_triple_",lu,".rds"))
+  double <- read_rds(paste0("results/revisions/",prefix,"_double_",lu,".rds"))
+  return(anova(triple, double) %>% map_df(rev) %>% mutate(lu = lu,interaction = prefix))
+}
+
+prefix <- c("conscore","cavity","substrate")
+lu <- c("ag","forest","open","human")
+
+params <- expand.grid(prefix,lu) %>% tibble()
+
+fig_data <- map2(params$Var1,params$Var2,make_anovas) %>%
+  list_rbind()
+
+(trait_triple_perlu <- fig_data %>%
+    mutate_at(c("AIC", "Chisq"), round, digits = 2) %>%
+    mutate_at("Pr(>Chisq)",round, digits = 3) %>%
+    tibble() %>%
+    select(AIC,Chisq,`Pr(>Chisq)`,interaction,lu) %>%
+    mutate(interaction = recode_factor(interaction,
+                                       conscore = "Conservation score",
+                                       cavity = "Cavity or not",
+                                       substrate = "Substrate or not")) %>%
+    mutate(lu = recode_factor(lu,
+                                       ag = "Agriculture",
+                                       forest = "Forest",
+                                       open = "Natural open",
+                                       human = "Developed")) %>%
+    mutate(Model = rep(c("Triple interaction", "No triple interaction"), times = 12),.before = AIC) %>%
+    rename(P = `Pr(>Chisq)`) %>%
+    group_by(interaction) %>%
+    pivot_longer(-c(lu,interaction,Model)) %>%
+    pivot_wider(names_from=c(lu,Model), values_from=value) %>%
+    # rename(`Land cover type` = lu) %>%
+    gt(rowname_col = "name") %>% tab_options(data_row.padding = px(1)) %>%
+    tab_spanner_delim(
+      delim = "_"
+    ))
+
+gtsave(filename = "figures/TS12_tripleval_traits_perlu.html", data = trait_triple_perlu)
 
 # Full output for spatial models (Table S12)
 

@@ -83,12 +83,17 @@ run_moran_i <- function(models,prop = 1,n = 1,plan = list(sequential),outfile) {
   
   bootstrap.moran.i <- function(model,prop){
     m <- read_rds(model)
-    if("UnCoor" %in% names(m@frame)) {
+    if(class(m) == 'inla') {
+      UnCoor <- read_rds('results/revisions/autocorr_data.rds') %>% pull(UnCoor)
+      res <- m$residuals$deviance.residuals %>% tibble()
+    } else if("UnCoor" %in% names(m@frame)) {
       UnCoor <- m@frame %>% pull(UnCoor)
+      res <- resid(m) %>% tibble()
     } else if(str_replace(model,"(quad)?(\\.rds)","data.rds") %in% list.files(path = "results/revisions",full.names = TRUE)) {
       UnCoor <- str_replace(model,"(quad)?(\\.rds)","data.rds") %>%
         read_rds() %>%
         pull(UnCoor)
+      res <- resid(m) %>% tibble()
     } else {
       stop("Provide UnCoor source for distance matrix construction")
     }
@@ -99,7 +104,7 @@ run_moran_i <- function(models,prop = 1,n = 1,plan = list(sequential),outfile) {
     loc_sample <- slice_sample(loc, prop = prop)
     nest.dists.inv <- 1/as.matrix(dist(cbind(as.numeric(loc_sample$lon),as.numeric(loc_sample$lat))))
     nest.dists.inv[is.infinite(nest.dists.inv)] <- 0
-    p <- m %>% resid() %>% tibble() %>% slice(c(pull(loc_sample,row_num))) %>% pull() %>% Moran.I(nest.dists.inv)
+    p <- res %>% slice(c(pull(loc_sample,row_num))) %>% pull() %>% Moran.I(nest.dists.inv)
   }
   
   rep_moran <- function(model,prop,n){
@@ -119,17 +124,6 @@ run_moran_i <- function(models,prop = 1,n = 1,plan = list(sequential),outfile) {
   write_rds(out,outfile)
 }
 
-# run_moran_i(list.files(path = "results/revisions",pattern = "(mainv2\\.rds$)|(mainv2_noregion\\.rds$)",full.names = TRUE),
-#             prop = .1,
-#             n = 500,
-#             plan = list(sequential,tweak(multisession,workers = 7)),
-#             outfile = "results/revisions/moran.i_mainv2.rds")
-run_moran_i(list.files(path = "results/revisions",pattern = "mainv1_res[[:digit:]]{2}quad",full.names = TRUE),
-            prop = 1,
-            n = 1,
-            plan = list(multisession, sequential),
-            outfile = "results/revisions/moran.i_mainv1_thinned.rds")
-
 track_region_models <- function() {
   require(tidyverse)
   require(ape)
@@ -140,11 +134,13 @@ track_region_models <- function() {
   require(future.apply)
   
   # combine moran's I results files
-  morani_results <- list.files(path = "results/revisions",pattern = "(moran\\.i|morani)", full.names = TRUE) %>%
+  morani_results <- list.files(path = "results/revisions", full.names = TRUE,include.dirs = FALSE) %>%
+    str_subset("(moran\\.i|morani)(?!(.*(small)?\\.csv))") %>%
+    str_subset("(moran\\.i|morani)(?!(.*small))") %>%
     map(read_rds) %>%
     map_dfr(as_tibble) %>%
     group_by(model) %>%
-    summarize(p.value = mean(p.value))
+    summarize(p.value = mean(p.value),observed = mean(observed))
   
   # create list of all attempted models
     # extract list of models that managed to run from combined moran's I object, add files that did not run
@@ -157,11 +153,23 @@ track_region_models <- function() {
     # model file name
     name <- mod %>%
       str_replace("(\\.rds|\\.R)","")
-    if(str_detect(mod,"\\.R")) {
+    print(name)
+    if(str_detect(mod,"\\.R") || !file.exists(paste0("results/revisions/",mod))) {
       run <- "N"
       converge <- NA
       p_value <- NA
+      observed <- NA
       singular <- NA
+      beta_ag <- NA
+      beta_ag_p <- NA
+      beta_forest <- NA
+      beta_forest_p <- NA
+      beta_open <- NA
+      beta_open_p <- NA
+      beta_human <- NA
+      beta_human_p <- NA
+      N <- NA
+      if(str_detect(mod,"\\.R")) {
       autocorr <- paste0("Code/Analyses/revisions/",mod) %>%
         read_lines() %>%
         as_tibble() %>%
@@ -169,11 +177,42 @@ track_region_models <- function() {
         pull(value) %>%
         str_extract_all("(lat \\* lon)|(lat_sq \\+ lon_sq)|(lat(?!( \\* lon)))|(elevation \\* Tmax_std_gridmet)|(elevation(?!( \\* Tmax_std_gridmet)))|(Region/UnCoor)|((Region[:digit:]{2,})/UnCoor)|(Region(?!(/UnCoor)))|(sollman)") %>%
         unlist() %>%
-        str_c(collapse = " + ")
+        str_c(collapse = " + ") }
+      else {autocorr = "missing model file. Look at model name"}
+    } else if(str_detect(mod,"inla")) {
+      run <- "Y"
+      tmp <- paste0("results/revisions/",mod) %>%
+        read_rds()
+      m <- tmp %>%
+        summary()
+      converge <- NA
+      singular <- NA
+      autocorr <- NA
+      p_value <- morani_results %>%
+        filter(model == mod) %>%
+        pull(p.value)
+      observed <- morani_results %>%
+        filter(model == mod) %>%
+        pull(observed)
+      fix <- tmp$summary.fixed
+      beta_ag <- fix["Tmax_std_gridmet.NewLU1Ag","mean"] %>%
+        as.numeric()
+      beta_ag_p <- NA
+      beta_forest <- fix["Tmax_std_gridmet","mean"] %>%
+        as.numeric()
+      beta_forest_p <- NA
+      beta_open <- fix["Tmax_std_gridmet.NewLU1Natural_open","mean"] %>%
+        as.numeric()
+      beta_open_p <- NA
+      beta_human <- fix["Tmax_std_gridmet.NewLU1Human","mean"] %>%
+        as.numeric()
+      beta_human_p <- NA
+      N <- NA
     } else if(str_detect(mod,"\\.rds")) {
       run <- "Y"
-      m <- paste0("results/revisions/",mod) %>%
-        read_rds() %>%
+      tmp <- paste0("results/revisions/",mod) %>%
+        read_rds()
+      m <- tmp %>%
         summary()
       converge <- m$optinfo$conv$lme4$messages %>%
         str_detect("failed to converge") %>%
@@ -184,6 +223,7 @@ track_region_models <- function() {
         any() %>%
         if_else("Y","N")
       autocorr <- formula(m) %>%
+        as.character() %>%
         str_remove("\\n") %>%
         as_tibble() %>%
         slice(3) %>%
@@ -199,17 +239,53 @@ track_region_models <- function() {
       p_value <- morani_results %>%
         filter(model == mod) %>%
         pull(p.value)
+      observed <- morani_results %>%
+        filter(model == mod) %>%
+        pull(observed)
+      fix <- tmp %>%
+        fixef()
+      cof <- tmp %>%
+        summary() %>%
+        coef()
+      beta_ag <- fix["Tmax_std_gridmet:NewLU1Ag"] %>%
+        as.numeric()
+      beta_ag_p <- cof["Tmax_std_gridmet:NewLU1Ag",4] %>%
+        as.numeric()
+      beta_forest <- fix["Tmax_std_gridmet"] %>%
+        as.numeric()
+      beta_forest_p <- cof["Tmax_std_gridmet",4] %>%
+        as.numeric()
+      beta_open <- fix["Tmax_std_gridmet:NewLU1Natural_open"] %>%
+        as.numeric()
+      beta_open_p <- cof["Tmax_std_gridmet:NewLU1Natural_open",4] %>%
+        as.numeric()
+      beta_human <- fix["Tmax_std_gridmet:NewLU1Human"] %>%
+        as.numeric()
+      beta_human_p <- cof["Tmax_std_gridmet:NewLU1Human",4] %>%
+        as.numeric()
+      N <- tmp %>%
+        nobs()
     }
     tibble(model = name,
            autocorrelation = autocorr,
            succeed = run,
            convergence = converge,
            singular = singular,
-           p.value = p_value) %>% return()
+           beta_ag = beta_ag,
+           beta_ag_p = beta_ag_p,
+           beta_forest = beta_forest,
+           beta_forest_p = beta_forest_p,
+           beta_open = beta_open,
+           beta_open_p = beta_open_p,
+           beta_human = beta_human,
+           beta_human_p = beta_human_p,
+           N = N,
+           p.value = p_value,
+           observed = observed) %>% return()
   }
   # call extract_row on list of files, return object
   out <- map_dfr(models_all,extract_row,morani_results = morani_results)
-  write_csv(out,"Manuscript/Revisions/autocorr_model_tracking.csv")
+  write_csv(out,"Manuscript/revision3/autocorr_model_tracking.csv")
   return(out)
 }
 

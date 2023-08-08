@@ -1,0 +1,47 @@
+import sys
+
+MESH=["2000_2500"]
+TYPE=["noautocorr","quad","linear","noint"]
+print('meshes are:', MESH, file=sys.stderr)
+
+expand("results/revisions/stackhost_{mesh}", mesh=MESH),
+        "results/revisions/inla_noautocorr.rds",
+        "results/revisions/resid_inla_noautocorr.rds",
+        expand("results/revisions/inla_{type}_{mesh}.rds",mesh=MESH,type=TYPE[1:3]),
+        expand("results/revisions/resid_inla_{type}_{mesh}.rds",mesh=MESH,type=TYPE[1:3]),
+        expand("figures/effects_plot_{mesh}.png",mesh=MESH),
+        expand("figures/dic_plot_{mesh}.png",mesh=MESH),
+
+rule make_stackhost:
+    input:
+        "results/revisions/inla_data.rds",
+        mesh=MESH,
+    output:
+        expand("results/revisions/stackhost_{mesh}.rds", mesh=MESH),
+    shell:
+        "Rscript Code/Analyses/revisions/make_stackhost.R {input.mesh}"
+
+rule run_inla_models:
+    input:
+        "results/revisions/inla_data.rds",
+        "results/revisions/mainv1_withregion.rds",
+        "results/revisions/stackhost_{mesh}.rds,
+    output:
+        "results/revisions/inla_{type}.rds",
+        "results/revisions/resid_inla_{type}.rds",
+        "results/revisions/inla_{type}_{mesh}.rds",
+        "results/revisions/resid_inla_{type}_{mesh}.rds",
+    shell:
+        "sbatch Code/Analyses/revisions/run_inla_models.sh {wildcards.mesh} {wildcards.type}"
+
+rule make_inla_plots:
+    input: 
+        expand("results/revisions/inla_{type}_{mesh}.rds",mesh=MESH,type=TYPE[1:3]),
+        "results/revisions/resid_inla_noautocorr.rds",
+        mesh=MESH,
+    output: 
+        expand("figures/effects_plot_{mesh}.png",mesh=MESH),
+        expand("figures/dic_plot_{mesh}.png",mesh=MESH),
+    shell:
+        "Rscript Code/Analyses/revisions/make_inla_plots.R {input.mesh}"
+        

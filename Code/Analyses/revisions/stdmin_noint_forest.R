@@ -1,0 +1,3 @@
+library("lme4"); library(tidyverse); nest <- read_rds('Data/active/success-cleaned.rds')
+mod<-glmer(formula = at_least_one_success ~ NLCD_p_forest + NLCD_p_human + NLCD_p_ag + substrate_binary + laydate_scaled + (1 | species) + (1 | year) + (1 | Region/UnCoor), data = filter(nest, NewLU1 == "Forest"), family = binomial(link = "logit"), control = glmerControl(optimizer = c("bobyqa"), optCtrl = list(maxfun = 2e+09)))
+write_rds(mod,"results/revisions/stdmin_noint_forest.rds")
